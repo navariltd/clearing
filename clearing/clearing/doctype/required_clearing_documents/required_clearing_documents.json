@@ -13,9 +13,9 @@
   {
    "default": "Road",
    "fieldname": "mode_of_transport",
-   "fieldtype": "Select",
+   "fieldtype": "Link",
    "label": "Mode of Transport",
-   "options": "Air\nRoad\nWater"
+   "options": "Mode of Transport"
   },
   {
    "fieldname": "clearing_document_type",
@@ -28,7 +28,7 @@
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2025-12-05 07:14:20.643117",
+ "modified": "2025-12-05 08:30:23.767549",
  "modified_by": "Administrator",
  "module": "Clearing",
  "name": "Required Clearing Documents",
