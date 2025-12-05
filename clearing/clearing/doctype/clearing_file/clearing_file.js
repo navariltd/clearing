@@ -726,6 +726,7 @@ frappe.ui.form.on("Clearing File Document", {
   }
 });
 
+// TODO: Make this configurable form settings
 function get_required_clearing_documents_js(mode_of_transport) {
   const base_required_docs = [
     "Authorization Letter",
