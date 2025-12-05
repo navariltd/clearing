@@ -5,10 +5,12 @@ from frappe.model.document import Document
 from frappe.contacts.doctype.address.address import get_address_display
 from frappe import _
 from frappe.utils import cstr, nowdate
+from erpnext import get_company_currency
 
 
 class ClearingFile(Document):
     def before_save(self):
+        self.set_currency()
         self.update_container_summary()
         # Check and possibly update status, but do not enforce it strictly
         self.check_and_update_status()
@@ -50,6 +52,19 @@ class ClearingFile(Document):
         if self.status == "Delivered":
             self.check_transit_bond_status()
 
+    def set_currency(self):
+        """Align currency with customer default or company currency."""
+        customer_currency = None
+        if self.customer:
+            customer_currency = frappe.get_cached_value("Customer", self.customer, "default_currency")
+
+        company_currency = get_company_currency(self.company) if self.company else None
+        target_currency = customer_currency or company_currency
+
+        current_currency = getattr(self, "currency", None)
+        if target_currency and current_currency != target_currency:
+            self.currency = target_currency
+
     def on_submit(self):
         # Upon submission, mark as Closed
         try:
@@ -80,8 +95,7 @@ class ClearingFile(Document):
         if not missing_fields:
             if self.status == "Open":
                 self.status = "Pre-Lodged"
-        else:
-            pass
+
 
     def check_clearing_documents_and_update_status(self):
         """Check if required transit documents are attached and update status to Open"""
@@ -131,18 +145,9 @@ class ClearingFile(Document):
             )
 
     def get_required_clearing_documents(self):
-        base_required_docs = [
-            "Authorization Letter",
-            "Commercial Invoice",
-            "Packing List",
-        ]
+        base_required_docs = get_required_document_types_by_mode(self.mode_of_transport)
 
-        if self.mode_of_transport == "Air":
-            return base_required_docs + ["Air Waybill (AWB)"]
-        if self.mode_of_transport == "Sea":
-            return base_required_docs + ["Bill of Lading B/L"]
-
-        return base_required_docs + ["Air Waybill (AWB)"]
+        return base_required_docs
 
     def get_attached_clearing_documents(self):
         documents = getattr(self, "document", None) or []
@@ -651,3 +656,17 @@ def check_container_interchange_completion(clearing_file: str) -> dict:
     refund_done = any(record.get("refund") for record in records)
 
     return {"final_done": bool(final_done), "refund_done": bool(refund_done)}
+
+@frappe.whitelist()
+def get_required_document_types_by_mode(mode: str) -> list:
+    if not mode:
+        return []
+
+    clearing_settings = frappe.get_single_value("Clearing Settings", "required_clearing_docs")
+    required_docs = [
+        row.clearing_document_type
+        for row in clearing_settings
+        if row.mode_of_transport == mode
+    ]
+
+    return required_docs

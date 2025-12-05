@@ -1,46 +1,37 @@
 {
  "actions": [],
  "allow_rename": 1,
- "creation": "2025-10-27 08:57:49.534180",
+ "creation": "2025-12-05 07:12:25.356519",
  "doctype": "DocType",
  "editable_grid": 1,
  "engine": "InnoDB",
  "field_order": [
-  "item",
-  "currency",
-  "amount"
+  "mode_of_transport",
+  "clearing_document_type"
  ],
  "fields": [
   {
-   "fieldname": "item",
+   "default": "Road",
+   "fieldname": "mode_of_transport",
    "fieldtype": "Link",
-   "in_standard_filter": 1,
-   "label": "Item",
-   "options": "Item"
+   "label": "Mode of Transport",
+   "options": "Mode of Transport"
   },
   {
-   "fieldname": "currency",
+   "fieldname": "clearing_document_type",
    "fieldtype": "Link",
-   "in_list_view": 1,
-   "label": "Currency",
-   "options": "Currency"
-  },
-  {
-   "fieldname": "amount",
-   "fieldtype": "Currency",
-   "in_list_view": 1,
-   "options": "currency",
-   "label": "Amount"
+   "label": "Clearing Document Type",
+   "options": "Clearing Document Type"
   }
-],
+ ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2025-10-27 09:04:56.038979",
+ "modified": "2025-12-05 08:30:23.767549",
  "modified_by": "Administrator",
  "module": "Clearing",
- "name": "Verification Charges Paid",
+ "name": "Required Clearing Documents",
  "owner": "Administrator",
  "permissions": [],
  "row_format": "Dynamic",

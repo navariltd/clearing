@@ -52,9 +52,11 @@ frappe.ui.form.on("Clearing File", {
     }
 
     // Show transit bond alert for IM8 declaration type when status is Delivered or submitted
-    if (frm.doc.declaration_type === "IM8 TRANSIT AND TRANSHIPMENT" &&
-        (frm.doc.status === "Delivered" || frm.doc.docstatus === 1) &&
-        !frm.doc.bond_returned) {
+    if (
+      frm.doc.declaration_type === "IM8 TRANSIT AND TRANSHIPMENT" &&
+      (frm.doc.status === "Delivered" || frm.doc.docstatus === 1) &&
+      !frm.doc.bond_returned
+    ) {
       frm.set_intro(
         `<div style="padding:15px; background:#fff3cd; border:1px solid #ffeeba; border-radius:5px; color:#856404;">
           <strong>Transit Bond Alert:</strong><br>
@@ -83,10 +85,9 @@ frappe.ui.form.on("Clearing File", {
           }
 
           if (pendingSteps.length) {
-            const message = __(
-              "Pending Container Interchange record: {0}",
-              [pendingSteps.join(", ")]
-            );
+            const message = __("Pending Container Interchange record: {0}", [
+              pendingSteps.join(", "),
+            ]);
             set_headline_message(frm, "container", message, "orange");
           } else {
             set_headline_message(frm, "container", null);
@@ -143,7 +144,12 @@ frappe.ui.form.on("Clearing File", {
                   // Open the new document form without saving
                   frappe.set_route("Form", doctype, new_doc.name);
 
-                  frappe.msgprint(__(success_message + " Please fill in the required fields and save."));
+                  frappe.msgprint(
+                    __(
+                      success_message +
+                        " Please fill in the required fields and save."
+                    )
+                  );
                 }
               },
             });
@@ -415,16 +421,28 @@ frappe.ui.form.on("Clearing File", {
 
       const existingContainer = Number(row.quantity_of_container) || 0;
       if (allowUpdate && existingContainer !== containerCount) {
-        frappe.model.set_value(row.doctype, row.name, "quantity_of_container", containerCount);
+        frappe.model.set_value(
+          row.doctype,
+          row.name,
+          "quantity_of_container",
+          containerCount
+        );
       }
 
       const hsRaw = (row.hs_code || "").trim();
-      const hsCount = hsRaw ? hsRaw.split(splitPattern).filter(Boolean).length : 0;
+      const hsCount = hsRaw
+        ? hsRaw.split(splitPattern).filter(Boolean).length
+        : 0;
       totalHsCodes += hsCount;
 
       const existingHs = Number(row.quantity_of_hs_code) || 0;
       if (allowUpdate && existingHs !== hsCount) {
-        frappe.model.set_value(row.doctype, row.name, "quantity_of_hs_code", hsCount);
+        frappe.model.set_value(
+          row.doctype,
+          row.name,
+          "quantity_of_hs_code",
+          hsCount
+        );
       }
     });
 
@@ -692,56 +710,63 @@ function proceedWithAttachmentDialog(frm) {
 
 // Handle declaration type change
 frappe.ui.form.on("Clearing File", {
-  declaration_type: function(frm) {
+  declaration_type: function (frm) {
     if (frm.doc.declaration_type === "IM8 TRANSIT AND TRANSHIPMENT") {
       frappe.msgprint({
         title: __("Transit Bond Notice"),
-        message: __("IM8 TRANSIT AND TRANSHIPMENT declaration type selected. Transit Bond will be automatically checked in related Port Clearance documents."),
-        indicator: "blue"
+        message: __(
+          "IM8 TRANSIT AND TRANSHIPMENT declaration type selected. Transit Bond will be automatically checked in related Port Clearance documents."
+        ),
+        indicator: "blue",
       });
     }
   },
 
-  bond_returned: function(frm) {
+  bond_returned: function (frm) {
     // Clear any transit bond alerts when bond is marked as returned
-    if (frm.doc.bond_returned && frm.doc.declaration_type === "IM8 TRANSIT AND TRANSHIPMENT") {
+    if (
+      frm.doc.bond_returned &&
+      frm.doc.declaration_type === "IM8 TRANSIT AND TRANSHIPMENT"
+    ) {
       frm.set_intro("");
     }
   },
 
-  mode_of_transport: function(frm) {
+  mode_of_transport: function (frm) {
     // Refresh clearing document status when mode of transport changes
     check_clearing_documents_status(frm);
-  }
+  },
 });
 
 // Trigger document check when documents are added/removed
 frappe.ui.form.on("Clearing File Document", {
-  document_name: function(frm) {
+  document_name: function (frm) {
     check_clearing_documents_status(frm);
   },
 
-  clearing_file_document_remove: function(frm) {
+  clearing_file_document_remove: function (frm) {
     setTimeout(() => check_clearing_documents_status(frm), 100);
-  }
+  },
 });
 
-function get_required_clearing_documents_js(mode_of_transport) {
-  const base_required_docs = [
-    "Authorization Letter",
-    "Commercial Invoice",
-    "Packing List",
-  ];
-
-  if (mode_of_transport === "Air") {
-    return [...base_required_docs, "Air Waybill (AWB)"];
+// TODO: Make this configurable form settings
+function get_required_clearing_documents_js(mode_of_transport, callback) {
+  if (!mode_of_transport) {
+    if (callback) callback([]);
+    return;
   }
 
-  if (mode_of_transport === "Sea") {
-    return [...base_required_docs, "Bill of Lading B/L"];
-  }
-
-  return [...base_required_docs, "Air Waybill (AWB)"];
+  frappe.call({
+    method:
+      "clearing.clearing.doctype.clearing_file.clearing_file.get_required_document_types_by_mode",
+    args: {
+      mode: mode_of_transport,
+    },
+    callback: function (r) {
+      const required_docs = r.message || [];
+      if (callback) callback(required_docs);
+    },
+  });
 }
 
 function check_clearing_documents_status(frm) {
@@ -760,38 +785,44 @@ function check_clearing_documents_status(frm) {
     return;
   }
 
-  const requiredDocs = get_required_clearing_documents_js(frm.doc.mode_of_transport);
-  const attachedDocs = (frm.doc.document || [])
-    .map((row) => row.document_name)
-    .filter(Boolean);
+  // Use callback to handle async response
+  get_required_clearing_documents_js(
+    frm.doc.mode_of_transport,
+    function (requiredDocs) {
+      const attachedDocs = (frm.doc.document || [])
+        .map((row) => row.document_name)
+        .filter(Boolean);
 
-  const missingDocs = requiredDocs.filter(
-    (doc) => !attachedDocs.includes(doc)
-  );
-
-  if (missingDocs.length) {
-    set_headline_message(
-      frm,
-      "docs",
-      __("Attach the following clearing documents to move this Clearing File to 'Open': {0}", [
-        missingDocs.join(", "),
-      ]),
-      "yellow"
-    );
-    frm.__all_docs_alert_shown = false;
-  } else {
-    set_headline_message(frm, "docs", null);
-    if (!frm.__all_docs_alert_shown) {
-      frappe.show_alert(
-        {
-          message: __("All required clearing documents are attached."),
-          indicator: "green",
-        },
-        5
+      const missingDocs = requiredDocs.filter(
+        (doc) => !attachedDocs.includes(doc)
       );
-      frm.__all_docs_alert_shown = true;
+
+      if (missingDocs.length) {
+        set_headline_message(
+          frm,
+          "docs",
+          __(
+            "Attach the following clearing documents to move this Clearing File to 'Open': {0}",
+            [missingDocs.join(", ")]
+          ),
+          "yellow"
+        );
+        frm.__all_docs_alert_shown = false;
+      } else {
+        set_headline_message(frm, "docs", null);
+        if (!frm.__all_docs_alert_shown) {
+          frappe.show_alert(
+            {
+              message: __("All required clearing documents are attached."),
+              indicator: "green",
+            },
+            5
+          );
+          frm.__all_docs_alert_shown = true;
+        }
+      }
     }
-  }
+  );
 }
 
 function reset_headline_messages(frm) {
@@ -860,9 +891,7 @@ function refresh_headline_messages(frm) {
       : current;
   }, null);
 
-  const html = entries
-    .map((entry) => `<div>${entry.message}</div>`)
-    .join("");
+  const html = entries.map((entry) => `<div>${entry.message}</div>`).join("");
 
   frm.dashboard.set_headline_alert(html, indicator || "yellow");
 }
