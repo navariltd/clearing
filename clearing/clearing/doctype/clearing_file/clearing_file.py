@@ -662,11 +662,15 @@ def get_required_document_types_by_mode(mode: str) -> list:
     if not mode:
         return []
 
-    clearing_settings = frappe.get_single_value("Clearing Settings", "required_clearing_docs")
-    required_docs = [
-        row.clearing_document_type
-        for row in clearing_settings
-        if row.mode_of_transport == mode
-    ]
+    clearing_file_documents = frappe.get_all(
+        "Mode of Transport Detail",
+        filters={
+            "parent": mode,
+            "parenttype": "Mode of Transport",
+            "parentfield": "clearing_file_document"
+        },
+        fields=["clearing_document_type"],
+        pluck="clearing_document_type"
+    )
 
-    return required_docs
+    return clearing_file_documents
