@@ -8,8 +8,7 @@
   "column_break_1",
   "cash_or_bank_group_account",
   "clearing_receivable_account",
-  "column_break_xzgy",
-  "required_clearing_docs"
+  "column_break_xzgy"
  ],
  "fields": [
   {
@@ -38,18 +37,12 @@
   {
    "fieldname": "column_break_xzgy",
    "fieldtype": "Column Break"
-  },
-  {
-   "fieldname": "required_clearing_docs",
-   "fieldtype": "Table",
-   "label": "Required documents for Clearing",
-   "options": "Required Clearing Documents"
   }
  ],
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "links": [],
- "modified": "2025-12-05 07:28:18.936985",
+ "modified": "2025-12-08 16:09:07.181342",
  "modified_by": "Administrator",
  "module": "Clearing",
  "name": "Clearing Settings",
