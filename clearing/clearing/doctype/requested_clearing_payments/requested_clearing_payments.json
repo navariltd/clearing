@@ -1,0 +1,129 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2025-12-11 09:25:04.910259",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "date",
+  "company",
+  "column_break_ptbg",
+  "ref_doctype",
+  "ref_doc",
+  "section_break_gkqa",
+  "requested_payments",
+  "section_break_nbfp",
+  "approval_button",
+  "rejection_button",
+  "total_requested_amount",
+  "section_break_svqw",
+  "approved_clearing_payments",
+  "section_break_jjeg",
+  "total_approved_amount"
+ ],
+ "fields": [
+  {
+   "fieldname": "ref_doctype",
+   "fieldtype": "Link",
+   "label": "Reference Document Type",
+   "options": "DocType"
+  },
+  {
+   "fieldname": "ref_doc",
+   "fieldtype": "Dynamic Link",
+   "label": "Reference Document",
+   "options": "ref_doctype"
+  },
+  {
+   "fieldname": "date",
+   "fieldtype": "Date",
+   "label": "Date"
+  },
+  {
+   "fieldname": "company",
+   "fieldtype": "Link",
+   "label": "Company",
+   "options": "Company"
+  },
+  {
+   "fieldname": "column_break_ptbg",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "section_break_gkqa",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "requested_payments",
+   "fieldtype": "Table",
+   "label": "Requested Payments",
+   "options": "Requested Clearing Payment Details"
+  },
+  {
+   "fieldname": "section_break_nbfp",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "approval_button",
+   "fieldtype": "HTML",
+   "label": "Approval Button"
+  },
+  {
+   "fieldname": "rejection_button",
+   "fieldtype": "HTML",
+   "label": "Rejection Button"
+  },
+  {
+   "fieldname": "total_requested_amount",
+   "fieldtype": "Currency",
+   "label": "Total Requested Amount"
+  },
+  {
+   "fieldname": "section_break_jjeg",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "total_approved_amount",
+   "fieldtype": "Currency",
+   "label": "Total Approved Amount"
+  },
+  {
+   "fieldname": "section_break_svqw",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "approved_clearing_payments",
+   "fieldtype": "Table",
+   "label": "Approved Clearing Payments",
+   "options": "Requested Clearing Fund Accounts Table",
+   "read_only": 1
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2025-12-11 10:09:05.533391",
+ "modified_by": "Administrator",
+ "module": "Clearing",
+ "name": "Requested Clearing Payments",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}
