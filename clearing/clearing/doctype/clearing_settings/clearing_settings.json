@@ -8,7 +8,8 @@
   "column_break_1",
   "cash_or_bank_group_account",
   "clearing_receivable_account",
-  "column_break_xzgy"
+  "column_break_xzgy",
+  "default_expense_account"
  ],
  "fields": [
   {
@@ -37,12 +38,19 @@
   {
    "fieldname": "column_break_xzgy",
    "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "default_expense_account",
+   "fieldtype": "Link",
+   "label": "Default Expense Account",
+   "link_filters": "[[\"Account\",\"account_type\",\"=\",\"Expense Account\"]]",
+   "options": "Account"
   }
  ],
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "links": [],
- "modified": "2025-12-08 16:09:07.181342",
+ "modified": "2025-12-11 10:31:42.725275",
  "modified_by": "Administrator",
  "module": "Clearing",
  "name": "Clearing Settings",

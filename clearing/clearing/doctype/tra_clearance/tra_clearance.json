@@ -29,7 +29,6 @@
   "paid_by",
   "section_break_thzk",
   "tra_charges",
-  "make_journal",
   "total_charges",
   "total_charges_section",
   "paid_by_clearing_agent",
@@ -40,6 +39,7 @@
   "attach_documents",
   "section_break_lps6b",
   "document",
+  "has_any_doc_attachments",
   "notes_section",
   "notes",
   "amended_from",
@@ -244,11 +244,6 @@
    "label": "AWB/BL No"
   },
   {
-   "fieldname": "make_journal",
-   "fieldtype": "Button",
-   "label": "Make Journal"
-  },
-  {
    "fieldname": "column_break_syoq",
    "fieldtype": "Column Break"
   },
@@ -274,12 +269,20 @@
    "fieldname": "attachment",
    "fieldtype": "Attach",
    "label": "Attachment"
+  },
+  {
+   "default": "0",
+   "fieldname": "has_any_doc_attachments",
+   "fieldtype": "Check",
+   "hidden": 1,
+   "label": "Has Any Attachments",
+   "read_only": 1
   }
  ],
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-11-27 08:31:59.744156",
+ "modified": "2025-12-12 13:15:13.654595",
  "modified_by": "Administrator",
  "module": "Clearing",
  "name": "TRA Clearance",
