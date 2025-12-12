@@ -130,15 +130,6 @@ frappe.ui.form.on("TRA Clearance", {
     }
   },
 
-  async make_journal(frm) {
-    await frappe.require("/assets/clearing/js/stage_journal.js");
-    await clearing.stageJournal.handle(frm, {
-      tableField: "tra_charges",
-      serverMethod:
-        "clearing.clearing.doctype.tra_clearance.tra_clearance.make_journal_entries",
-    });
-  },
-
   attach_documents: function (frm) {
     if (frm.doc.__unsaved) {
       frappe.msgprint(
