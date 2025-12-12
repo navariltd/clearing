@@ -14,7 +14,9 @@
   "requested_payments",
   "section_break_nbfp",
   "approval_button",
+  "column_break_gkqf",
   "rejection_button",
+  "section_break_cxsb",
   "total_requested_amount",
   "section_break_svqw",
   "approved_clearing_payments",
@@ -95,14 +97,21 @@
    "fieldname": "approved_clearing_payments",
    "fieldtype": "Table",
    "label": "Approved Clearing Payments",
-   "options": "Requested Clearing Fund Accounts Table",
-   "read_only": 1
+   "options": "Requested Clearing Fund Accounts Table"
+  },
+  {
+   "fieldname": "column_break_gkqf",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "section_break_cxsb",
+   "fieldtype": "Section Break"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-12-11 10:09:05.533391",
+ "modified": "2025-12-11 10:46:23.938806",
  "modified_by": "Administrator",
  "module": "Clearing",
  "name": "Requested Clearing Payments",
