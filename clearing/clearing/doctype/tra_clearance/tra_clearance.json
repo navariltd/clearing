@@ -274,6 +274,7 @@
    "default": "0",
    "fieldname": "has_any_doc_attachments",
    "fieldtype": "Check",
+   "hidden": 1,
    "label": "Has Any Attachments",
    "read_only": 1
   }
@@ -281,7 +282,7 @@
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-12-12 12:38:40.408089",
+ "modified": "2025-12-12 13:15:13.654595",
  "modified_by": "Administrator",
  "module": "Clearing",
  "name": "TRA Clearance",
