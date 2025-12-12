@@ -39,6 +39,7 @@
   "attach_documents",
   "section_break_lps6b",
   "document",
+  "has_any_doc_attachments",
   "notes_section",
   "notes",
   "amended_from",
@@ -268,12 +269,19 @@
    "fieldname": "attachment",
    "fieldtype": "Attach",
    "label": "Attachment"
+  },
+  {
+   "default": "0",
+   "fieldname": "has_any_doc_attachments",
+   "fieldtype": "Check",
+   "label": "Has Any Attachments",
+   "read_only": 1
   }
  ],
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-12-12 11:34:08.881787",
+ "modified": "2025-12-12 12:38:40.408089",
  "modified_by": "Administrator",
  "module": "Clearing",
  "name": "TRA Clearance",

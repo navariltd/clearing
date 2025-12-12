@@ -4,7 +4,9 @@ import frappe
 from frappe.model.document import Document
 from frappe import _
 from frappe.utils import flt
-from clearing.clearing.doctype.port_clearance.port_clearance import ensure_all_documents_attached
+from clearing.clearing.doctype.port_clearance.port_clearance import (
+    ensure_all_documents_attached,
+)
 from clearing.api.journal_entry import (
     create_child_table_journal_entries,
     normalize_child_row_selection,
@@ -13,7 +15,7 @@ from erpnext import get_company_currency
 
 
 class TRAClearance(Document):
-    def before_save(self):  
+    def before_save(self):
         """Before saving the document, check if invoice is paid and update the status."""
         self.set_currency()
         self._set_child_currencies()
@@ -43,18 +45,19 @@ class TRAClearance(Document):
         total = (self.total_charges or 0) + (self.paid_by or 0)
         self.total_paid = flt(total, self.precision("total_paid"))
 
-        
     def before_submit(self):
         # Ensure all required documents are attached before submission
         ensure_all_documents_attached(self, "tra_clearance_document")
-        
+
         # Validate that the invoice is paid and status is set correctly
         self.validate_payment_status()
-    
+
     def validate_payment_status(self):
         """Ensure payment status is marked as 'Payment Completed' before submission."""
         if self.status != "Payment Completed":
-            frappe.throw(_("You cannot Complete TRA Clearance unless the Payment Completed."))
+            frappe.throw(
+                _("You cannot Complete TRA Clearance unless the Payment Completed.")
+            )
 
     def on_update(self):
         """After saving TRA Clearance, move Clearing File to 'On Process' if it is 'Pre-Lodged'."""
@@ -62,7 +65,15 @@ class TRAClearance(Document):
             return
         cf_status = frappe.db.get_value("Clearing File", self.clearing_file, "status")
         if cf_status == "Pre-Lodged":
-            frappe.db.set_value("Clearing File", self.clearing_file, "status", "On Process")
+            frappe.db.set_value(
+                "Clearing File", self.clearing_file, "status", "On Process"
+            )
+        
+        doc_len = len(self.get("document", [])) > 0
+
+        if doc_len:
+            frappe.db.set_value("TRA Clearance", self.name, "has_any_doc_attachments", 1)
+
 
     def set_currency(self):
         """Sync currency with Clearing File / company currency."""
@@ -87,7 +98,9 @@ class TRAClearance(Document):
 
         for table_field in ("tra_charges", "charge"):
             for row in self.get(table_field, []):
-                if hasattr(row, "currency") and row.currency != getattr(self, "currency", None):
+                if hasattr(row, "currency") and row.currency != getattr(
+                    self, "currency", None
+                ):
                     row.currency = self.currency
 
 
