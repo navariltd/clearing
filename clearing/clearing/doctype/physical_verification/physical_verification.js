@@ -5,6 +5,9 @@ frappe.require("/assets/clearing/js/stage_journal.js");
 
 frappe.ui.form.on("Physical Verification", {
   refresh(frm) {
+    // Check physical verification documents status on refresh
+    check_physical_verification_documents_status(frm);
+
     // Fetch the Clearing File document to get its status
     if (frm.doc.clearing_file) {
       frappe.call({
@@ -20,7 +23,7 @@ frappe.ui.form.on("Physical Verification", {
               const v = r.message.cargo_location;
               if (v && v !== frm.doc.verification_location) {
                 frm.doc.verification_location = v;
-                frm.refresh_field('verification_location');
+                frm.refresh_field("verification_location");
               }
             }
             const clearing_file_status = r.message.status;
@@ -120,7 +123,12 @@ frappe.ui.form.on("Physical Verification", {
                 // Open the new document form without saving
                 frappe.set_route("Form", doctype, new_doc.name);
 
-                frappe.msgprint(__(success_message + " Please fill in the required fields and save."));
+                frappe.msgprint(
+                  __(
+                    success_message +
+                      " Please fill in the required fields and save."
+                  )
+                );
               }
             },
           });
@@ -134,19 +142,21 @@ frappe.ui.form.on("Physical Verification", {
     // Live sync when linked Clearing File is saved (no page reload)
     if (frm._ver_loc_listener) return;
     frm._ver_loc_listener = true;
-    frappe.realtime.on('doc_update', (d) => {
+    frappe.realtime.on("doc_update", (d) => {
       if (
-        d.doctype === 'Clearing File' &&
+        d.doctype === "Clearing File" &&
         d.docname === frm.doc.clearing_file &&
         frm.doc.docstatus === 1
       ) {
-        frappe.db.get_value('Clearing File', d.docname, 'cargo_location').then(r => {
-          const v = r.message && r.message.cargo_location;
-          if (v && v !== frm.doc.verification_location) {
-            frm.doc.verification_location = v;
-            frm.refresh_field('verification_location');
-          }
-        });
+        frappe.db
+          .get_value("Clearing File", d.docname, "cargo_location")
+          .then((r) => {
+            const v = r.message && r.message.cargo_location;
+            if (v && v !== frm.doc.verification_location) {
+              frm.doc.verification_location = v;
+              frm.refresh_field("verification_location");
+            }
+          });
       }
     });
   },
@@ -316,7 +326,26 @@ frappe.ui.form.on("Physical Verification", {
             if (response && response.message) {
               frappe.msgprint(__("Clearing Document created successfully."));
               d.hide();
-              frm.reload_doc();
+
+              // Update has_documents_attached field to 1
+              frappe.call({
+                method: "frappe.client.set_value",
+                args: {
+                  doctype: "Physical Verification",
+                  name: frm.doc.name,
+                  fieldname: "has_documents_attached",
+                  value: 1,
+                },
+                callback: function () {
+                  frm.reload_doc();
+
+                  // Check document status after successful attachment
+                  setTimeout(
+                    () => check_physical_verification_documents_status(frm),
+                    500
+                  );
+                },
+              });
             } else {
               frappe.msgprint(
                 __(
@@ -345,4 +374,136 @@ frappe.ui.form.on("Physical Verification", {
 
     d.show();
   },
+
+  clearing_file: function (frm) {
+    // Refresh document status when clearing file changes
+    check_physical_verification_documents_status(frm);
+  },
 });
+
+// Trigger document check when documents are added/removed
+frappe.ui.form.on("Physical Verification Document", {
+  document_name: function (frm) {
+    check_physical_verification_documents_status(frm);
+  },
+
+  physical_verification_document_remove: function (frm) {
+    setTimeout(() => check_physical_verification_documents_status(frm), 100);
+  },
+});
+
+function get_required_physical_verification_documents_js(
+  mode_of_transport,
+  callback
+) {
+  if (!mode_of_transport) {
+    if (callback) callback([]);
+    return;
+  }
+
+  frappe.call({
+    method:
+      "clearing.clearing.utils.required_docs.get_required_physical_verification_documents",
+    args: {
+      mode: mode_of_transport,
+    },
+    callback: function (r) {
+      const required_docs = r.message || [];
+      if (callback) callback(required_docs);
+    },
+  });
+}
+
+function check_physical_verification_documents_status(frm) {
+  if (!frm || !frm.doc) {
+    return;
+  }
+
+  // Only show after Physical Verification is saved
+  if (frm.is_new && frm.is_new()) {
+    clear_physical_verification_document_alert(frm);
+    return;
+  }
+
+  if (!frm.doc.clearing_file) {
+    clear_physical_verification_document_alert(frm);
+    return;
+  }
+
+  // Get mode of transport from clearing file
+  frappe.call({
+    method: "frappe.client.get_value",
+    args: {
+      doctype: "Clearing File",
+      filters: { name: frm.doc.clearing_file },
+      fieldname: "mode_of_transport",
+    },
+    callback: function (r) {
+      if (r.message && r.message.mode_of_transport) {
+        const mode_of_transport = r.message.mode_of_transport;
+
+        // Use callback to handle async response
+        get_required_physical_verification_documents_js(
+          mode_of_transport,
+          function (requiredDocs) {
+            const attachedDocs = (frm.doc.document || [])
+              .map((row) => row.document_name)
+              .filter(Boolean);
+
+            const missingDocs = requiredDocs.filter(
+              (doc) => !attachedDocs.includes(doc)
+            );
+
+            if (missingDocs.length) {
+              show_physical_verification_document_alert(
+                frm,
+                __(
+                  "Attach the following physical verification documents: {0}",
+                  [missingDocs.join(", ")]
+                ),
+                "yellow"
+              );
+              frm.__all_physical_verification_docs_alert_shown = false;
+            } else {
+              clear_physical_verification_document_alert(frm);
+              if (!frm.__all_physical_verification_docs_alert_shown) {
+                frappe.show_alert(
+                  {
+                    message: __(
+                      "All required physical verification documents are attached."
+                    ),
+                    indicator: "green",
+                  },
+                  5
+                );
+                frm.__all_physical_verification_docs_alert_shown = true;
+              }
+            }
+          }
+        );
+      }
+    },
+  });
+}
+
+function show_physical_verification_document_alert(
+  frm,
+  message,
+  indicator = "yellow"
+) {
+  if (!frm || !frm.dashboard) {
+    return;
+  }
+
+  frm.dashboard.clear_headline();
+  frm.dashboard.set_headline_alert(`<div>${message}</div>`, indicator);
+}
+
+function clear_physical_verification_document_alert(frm) {
+  if (!frm || !frm.dashboard) {
+    return;
+  }
+
+  frm.dashboard.clear_headline();
+  frm.dashboard.clear_comment && frm.dashboard.clear_comment();
+}

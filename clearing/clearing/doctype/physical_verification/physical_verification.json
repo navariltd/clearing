@@ -47,7 +47,7 @@
   "document_section_section",
   "attach_documents",
   "document",
-  "has_documents_attached",
+  "has_any_doc_attachments",
   "additional_notes_section",
   "notes",
   "column_break_c45ta",
@@ -337,7 +337,7 @@
   },
   {
    "default": "0",
-   "fieldname": "has_documents_attached",
+   "fieldname": "has_any_doc_attachments",
    "fieldtype": "Check",
    "label": "Has Documents Attached"
   }
@@ -345,7 +345,7 @@
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-12-13 09:36:23.450370",
+ "modified": "2025-12-13 10:17:32.024979",
  "modified_by": "Administrator",
  "module": "Clearing",
  "name": "Physical Verification",
