@@ -2,6 +2,9 @@ frappe.require("/assets/clearing/js/stage_journal.js");
 
 frappe.ui.form.on("TRA Clearance", {
   refresh(frm) {
+    // Check TRA documents status on refresh
+    check_tra_documents_status(frm);
+
     // Fetch the Clearing File document to get its status
     if (frm.doc.clearing_file) {
       frappe.call({
@@ -119,7 +122,12 @@ frappe.ui.form.on("TRA Clearance", {
                 // Open the new document form without saving
                 frappe.set_route("Form", doctype, new_doc.name);
 
-                frappe.msgprint(__(success_message + " Please fill in the required fields and save."));
+                frappe.msgprint(
+                  __(
+                    success_message +
+                      " Please fill in the required fields and save."
+                  )
+                );
               }
             },
           });
@@ -128,6 +136,11 @@ frappe.ui.form.on("TRA Clearance", {
         "primary"
       ); // Make the button primary
     }
+  },
+
+  clearing_file: function (frm) {
+    // Refresh document status when clearing file changes
+    check_tra_documents_status(frm);
   },
 
   attach_documents: function (frm) {
@@ -167,11 +180,13 @@ frappe.ui.form.on("TRA Clearance", {
                     // Populate table with attributes
                     r.message.clearing_document_attribute.forEach(
                       (aattribute) => {
-                        d.fields_dict.document_attributes.df.data.push({
-                          attribute: aattribute.document_attribute,
-                          mandatory: aattribute.mandatory,
-                          value: "",
-                        });
+                        d.fieldhas_any_doc_attachmentss_dict.document_attributes.df.data.push(
+                          {
+                            attribute: aattribute.document_attribute,
+                            mandatory: aattribute.mandatory,
+                            value: "",
+                          }
+                        );
                       }
                     );
                     attributes_table.refresh();
@@ -274,14 +289,30 @@ frappe.ui.form.on("TRA Clearance", {
               clearing_document_type: values.document_type,
               linked_file: "TRA Clearance",
               document_type: values.document_type,
-              clearing_document_attributes: clearing_document_attributes, // Handle child table
+              clearing_document_attributes: clearing_document_attributes,
             },
           },
           callback: function (response) {
             if (response && response.message) {
               frappe.msgprint(__("Clearing Document created successfully."));
               d.hide();
-              frm.reload_doc();
+
+              // Update has_any_doc_attachments field to 1
+              frappe.call({
+                method: "frappe.client.set_value",
+                args: {
+                  doctype: "TRA Clearance",
+                  name: frm.doc.name,
+                  fieldname: "has_any_doc_attachments",
+                  value: 1,
+                },
+                callback: function () {
+                  frm.reload_doc();
+
+                  // Check document status after successful attachment
+                  setTimeout(() => check_tra_documents_status(frm), 500);
+                },
+              });
             } else {
               console.error("Failed to create Clearing Document.");
               frappe.msgprint(
@@ -313,3 +344,105 @@ frappe.ui.form.on("TRA Clearance", {
     d.show();
   },
 });
+
+// Trigger document check when documents are added/removed
+frappe.ui.form.on("TRA Clearance Document", {
+  document_name: function (frm) {
+    check_tra_documents_status(frm);
+  },
+
+  tra_clearance_document_remove: function (frm) {
+    setTimeout(() => check_tra_documents_status(frm), 100);
+  },
+});
+
+function get_required_tra_documents_js(mode_of_transport, callback) {
+  if (!mode_of_transport) {
+    if (callback) callback([]);
+    return;
+  }
+
+  frappe.call({
+    method:
+      "clearing.clearing.utils.required_docs.get_required_tra_clearing_documents",
+    args: {
+      mode: mode_of_transport,
+    },
+    callback: function (r) {
+      const required_docs = r.message || [];
+      if (callback) callback(required_docs);
+    },
+  });
+}
+
+function check_tra_documents_status(frm) {
+  if (!frm || !frm.doc) {
+    return;
+  }
+
+  // Only show after TRA Clearance is saved
+  if (frm.is_new && frm.is_new()) {
+    clear_tra_document_alert(frm);
+    return;
+  }
+
+  if (!frm.doc.clearing_file) {
+    clear_tra_document_alert(frm);
+    return;
+  }
+
+  // Use callback to handle async response
+  get_required_tra_documents_js(
+    frm.doc.mode_of_transport,
+    function (requiredDocs) {
+      const attachedDocs = (frm.doc.document || [])
+        .map((row) => row.document_name)
+        .filter(Boolean);
+
+      const missingDocs = requiredDocs.filter(
+        (doc) => !attachedDocs.includes(doc)
+      );
+
+      if (missingDocs.length) {
+        show_tra_document_alert(
+          frm,
+          __("Attach the following TRA clearance documents: {0}", [
+            missingDocs.join(", "),
+          ]),
+          "yellow"
+        );
+        frm.__all_tra_docs_alert_shown = false;
+      } else {
+        clear_tra_document_alert(frm);
+        if (!frm.__all_tra_docs_alert_shown) {
+          frappe.show_alert(
+            {
+              message: __("All required TRA clearance documents are attached."),
+              indicator: "green",
+            },
+            5
+          );
+          frm.__all_tra_docs_alert_shown = true;
+        }
+      }
+    }
+  );
+}
+
+function show_tra_document_alert(frm, message, indicator = "yellow") {
+  if (!frm || !frm.dashboard) {
+    return;
+  }
+
+  frm.dashboard.clear_headline();
+  frm.dashboard.set_headline_alert(`<div>${message}</div>`, indicator);
+}
+
+function clear_tra_document_alert(frm) {
+  if (!frm || !frm.dashboard) {
+    return;
+  }
+
+  frm.dashboard.clear_headline();
+  frm.dashboard.clear_comment && frm.dashboard.clear_comment();
+}
