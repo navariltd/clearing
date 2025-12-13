@@ -56,7 +56,9 @@ class ClearingFile(Document):
         """Align currency with customer default or company currency."""
         customer_currency = None
         if self.customer:
-            customer_currency = frappe.get_cached_value("Customer", self.customer, "default_currency")
+            customer_currency = frappe.get_cached_value(
+                "Customer", self.customer, "default_currency"
+            )
 
         company_currency = get_company_currency(self.company) if self.company else None
         target_currency = customer_currency or company_currency
@@ -95,7 +97,6 @@ class ClearingFile(Document):
         if not missing_fields:
             if self.status == "Open":
                 self.status = "Pre-Lodged"
-
 
     def check_clearing_documents_and_update_status(self):
         """Check if required transit documents are attached and update status to Open"""
@@ -182,9 +183,7 @@ class ClearingFile(Document):
             if before:
                 previous_value = cstr(before.get(fieldname) or "").strip()
             elif not self.is_new():
-                previous_value = cstr(
-                    self.get_db_value(fieldname) or ""
-                ).strip()
+                previous_value = cstr(self.get_db_value(fieldname) or "").strip()
 
             if current_value != previous_value:
                 changed_fields.append(fieldname)
@@ -341,12 +340,14 @@ class ClearingFile(Document):
         ]
 
         if mode_of_transport != "Air":
-            related_doctypes.append({
-                "doctype": "Shipping Line Clearance",
-                "charge_type": "Shipping Line Clearance",
-                "field": "total_charges",
-                "paid_by_agent_field": "paid_by_clearing_agent",
-            })
+            related_doctypes.append(
+                {
+                    "doctype": "Shipping Line Clearance",
+                    "charge_type": "Shipping Line Clearance",
+                    "field": "total_charges",
+                    "paid_by_agent_field": "paid_by_clearing_agent",
+                }
+            )
 
         charges_needed = False
 
@@ -435,11 +436,13 @@ class ClearingFile(Document):
         for cargo in self.get("cargo_details", []):
             container_raw = cstr(cargo.get("container_number"))
             if container_raw:
-                container_count = len([
-                    code.strip()
-                    for code in re.split(r"[\s,;]+", container_raw)
-                    if code.strip()
-                ])
+                container_count = len(
+                    [
+                        code.strip()
+                        for code in re.split(r"[\s,;]+", container_raw)
+                        if code.strip()
+                    ]
+                )
             else:
                 container_count = 0
 
@@ -448,11 +451,13 @@ class ClearingFile(Document):
 
             hs_raw = cstr(cargo.get("hs_code"))
             if hs_raw:
-                hs_count = len([
-                    code.strip()
-                    for code in re.split(r"[\s,;]+", hs_raw)
-                    if code.strip()
-                ])
+                hs_count = len(
+                    [
+                        code.strip()
+                        for code in re.split(r"[\s,;]+", hs_raw)
+                        if code.strip()
+                    ]
+                )
             else:
                 hs_count = 0
 
@@ -471,21 +476,20 @@ class ClearingFile(Document):
             port_clearances = frappe.get_all(
                 "Port Clearance",
                 filters={"clearing_file": self.name},
-                fields=["name", "has_transit_bond"]
+                fields=["name", "has_transit_bond"],
             )
 
             for port_clearance in port_clearances:
                 if not port_clearance.has_transit_bond:
                     # Update the Port Clearance to check has_transit_bond
                     frappe.db.set_value(
-                        "Port Clearance",
-                        port_clearance.name,
-                        "has_transit_bond",
-                        1
+                        "Port Clearance", port_clearance.name, "has_transit_bond", 1
                     )
                     frappe.msgprint(
-                        _("Transit Bond has been automatically checked for Port Clearance {0} due to IM8 TRANSIT AND TRANSHIPMENT declaration type.").format(port_clearance.name),
-                        title=_("Transit Bond Updated")
+                        _(
+                            "Transit Bond has been automatically checked for Port Clearance {0} due to IM8 TRANSIT AND TRANSHIPMENT declaration type."
+                        ).format(port_clearance.name),
+                        title=_("Transit Bond Updated"),
                     )
 
     def check_transit_bond_status(self):
@@ -496,11 +500,8 @@ class ClearingFile(Document):
                 # Find Port Clearance documents with transit bonds
                 port_clearances_with_bonds = frappe.get_all(
                     "Port Clearance",
-                    filters={
-                        "clearing_file": self.name,
-                        "has_transit_bond": 1
-                    },
-                    fields=["name", "ref_key"]
+                    filters={"clearing_file": self.name, "has_transit_bond": 1},
+                    fields=["name", "ref_key"],
                 )
 
                 if port_clearances_with_bonds:
@@ -514,15 +515,18 @@ class ClearingFile(Document):
                     port_clearance_list = ", ".join(port_clearance_refs)
 
                     frappe.msgprint(
-                        _("Alert: Transit Bond has not yet been returned for this IM8 TRANSIT AND TRANSHIPMENT declaration. Port Clearance references: {0}").format(port_clearance_list),
+                        _(
+                            "Alert: Transit Bond has not yet been returned for this IM8 TRANSIT AND TRANSHIPMENT declaration. Port Clearance references: {0}"
+                        ).format(port_clearance_list),
                         title=_("Transit Bond Alert"),
-                        indicator="orange"
+                        indicator="orange",
                     )
 
     def ensure_transit_bond_returned_if_required(self):
         if (
-            (self.declaration_type or "").strip() == "IM8 TRANSIT AND TRANSHIPMENT"
-            and not frappe.utils.cint(self.bond_returned)
+            self.declaration_type or ""
+        ).strip() == "IM8 TRANSIT AND TRANSHIPMENT" and not frappe.utils.cint(
+            self.bond_returned
         ):
             frappe.throw(
                 _("Please update the bond return before submitting this shipment.")
@@ -577,14 +581,15 @@ def get_address_display_from_link(doctype, name):
 @frappe.whitelist()
 def check_status_change_for_transit_bond(doc, method):
     """Hook function to check transit bond status when Clearing File status changes"""
-    if hasattr(doc, '_doc_before_save') and doc._doc_before_save:
-        old_status = doc._doc_before_save.get('status')
+    if hasattr(doc, "_doc_before_save") and doc._doc_before_save:
+        old_status = doc._doc_before_save.get("status")
         new_status = doc.status
 
         # Check if status changed to Delivered
         if old_status != new_status and new_status == "Delivered":
             clearing_file_doc = frappe.get_doc("Clearing File", doc.name)
             clearing_file_doc.check_transit_bond_status()
+
 
 @frappe.whitelist()
 def update_status_to_cleared(doc, method):
@@ -657,6 +662,7 @@ def check_container_interchange_completion(clearing_file: str) -> dict:
 
     return {"final_done": bool(final_done), "refund_done": bool(refund_done)}
 
+
 @frappe.whitelist()
 def get_required_document_types_by_mode(mode: str) -> list:
     if not mode:
@@ -667,10 +673,30 @@ def get_required_document_types_by_mode(mode: str) -> list:
         filters={
             "parent": mode,
             "parenttype": "Mode of Transport",
-            "parentfield": "clearing_file_document"
+            "parentfield": "clearing_file_document",
         },
         fields=["clearing_document_type"],
-        pluck="clearing_document_type"
+        pluck="clearing_document_type",
     )
 
     return clearing_file_documents
+
+
+@frappe.whitelist()
+def get_required_tra_clearing_documents(mode: str) -> list:
+    print("\n\n\nGetting required TRA clearing documents for mode:", mode)
+    if not mode:
+        return []
+
+    tra_clearing_documents = frappe.get_all(
+        "Mode of Transport Detail",
+        filters={
+            "parent": mode,
+            "parenttype": "Mode of Transport",
+            "parentfield": "tra_clearance_document",
+        },
+        fields=["clearing_document_type"],
+        pluck="clearing_document_type",
+    )
+    print("Required TRA clearing documents:", tra_clearing_documents, "\n\n\n")
+    return tra_clearing_documents
