@@ -122,7 +122,12 @@ frappe.ui.form.on("TRA Clearance", {
                 // Open the new document form without saving
                 frappe.set_route("Form", doctype, new_doc.name);
 
-                frappe.msgprint(__(success_message + " Please fill in the required fields and save."));
+                frappe.msgprint(
+                  __(
+                    success_message +
+                      " Please fill in the required fields and save."
+                  )
+                );
               }
             },
           });
@@ -133,7 +138,7 @@ frappe.ui.form.on("TRA Clearance", {
     }
   },
 
-  clearing_file: function(frm) {
+  clearing_file: function (frm) {
     // Refresh document status when clearing file changes
     check_tra_documents_status(frm);
   },
@@ -175,11 +180,13 @@ frappe.ui.form.on("TRA Clearance", {
                     // Populate table with attributes
                     r.message.clearing_document_attribute.forEach(
                       (aattribute) => {
-                        d.fields_dict.document_attributes.df.data.push({
-                          attribute: aattribute.document_attribute,
-                          mandatory: aattribute.mandatory,
-                          value: "",
-                        });
+                        d.fieldhas_any_doc_attachmentss_dict.document_attributes.df.data.push(
+                          {
+                            attribute: aattribute.document_attribute,
+                            mandatory: aattribute.mandatory,
+                            value: "",
+                          }
+                        );
                       }
                     );
                     attributes_table.refresh();
@@ -289,10 +296,23 @@ frappe.ui.form.on("TRA Clearance", {
             if (response && response.message) {
               frappe.msgprint(__("Clearing Document created successfully."));
               d.hide();
-              frm.reload_doc();
-              
-              // Check document status after successful attachment
-              setTimeout(() => check_tra_documents_status(frm), 500);
+
+              // Update has_any_doc_attachments field to 1
+              frappe.call({
+                method: "frappe.client.set_value",
+                args: {
+                  doctype: "TRA Clearance",
+                  name: frm.doc.name,
+                  fieldname: "has_any_doc_attachments",
+                  value: 1,
+                },
+                callback: function () {
+                  frm.reload_doc();
+
+                  // Check document status after successful attachment
+                  setTimeout(() => check_tra_documents_status(frm), 500);
+                },
+              });
             } else {
               console.error("Failed to create Clearing Document.");
               frappe.msgprint(
@@ -344,7 +364,7 @@ function get_required_tra_documents_js(mode_of_transport, callback) {
 
   frappe.call({
     method:
-      "clearing.clearing.doctype.clearing_file.clearing_file.get_required_tra_clearing_documents",
+      "clearing.clearing.utils.required_docs.get_required_tra_clearing_documents",
     args: {
       mode: mode_of_transport,
     },
@@ -386,10 +406,9 @@ function check_tra_documents_status(frm) {
       if (missingDocs.length) {
         show_tra_document_alert(
           frm,
-          __(
-            "Attach the following TRA clearance documents: {0}",
-            [missingDocs.join(", ")]
-          ),
+          __("Attach the following TRA clearance documents: {0}", [
+            missingDocs.join(", "),
+          ]),
           "yellow"
         );
         frm.__all_tra_docs_alert_shown = false;
@@ -416,10 +435,7 @@ function show_tra_document_alert(frm, message, indicator = "yellow") {
   }
 
   frm.dashboard.clear_headline();
-  frm.dashboard.set_headline_alert(
-    `<div>${message}</div>`,
-    indicator
-  );
+  frm.dashboard.set_headline_alert(`<div>${message}</div>`, indicator);
 }
 
 function clear_tra_document_alert(frm) {
