@@ -757,7 +757,7 @@ function get_required_clearing_documents_js(mode_of_transport, callback) {
 
   frappe.call({
     method:
-      "clearing.clearing.doctype.clearing_file.clearing_file.get_required_document_types_by_mode",
+      "clearing.clearing.utils.required_docs.get_required_document_types_by_mode",
     args: {
       mode: mode_of_transport,
     },
