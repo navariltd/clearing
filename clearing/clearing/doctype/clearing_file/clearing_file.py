@@ -684,7 +684,6 @@ def get_required_document_types_by_mode(mode: str) -> list:
 
 @frappe.whitelist()
 def get_required_tra_clearing_documents(mode: str) -> list:
-    print("\n\n\nGetting required TRA clearing documents for mode:", mode)
     if not mode:
         return []
 
@@ -698,5 +697,4 @@ def get_required_tra_clearing_documents(mode: str) -> list:
         fields=["clearing_document_type"],
         pluck="clearing_document_type",
     )
-    print("Required TRA clearing documents:", tra_clearing_documents, "\n\n\n")
     return tra_clearing_documents
