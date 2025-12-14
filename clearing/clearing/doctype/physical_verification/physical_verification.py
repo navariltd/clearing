@@ -108,10 +108,6 @@ class PhysicalVerification(Document):
         if changed and set(changed).issubset(allowed_fields):
             self.flags.ignore_validate_update_after_submit = True
 
-    def on_update_after_submit(self):
-        # Placeholder for any post-save actions if needed later
-        pass
-
     def on_update(self):
         """After saving Physical Verification, move Clearing File to 'On Process' if it is 'Pre-Lodged'."""
         if not self.clearing_file:
@@ -119,6 +115,9 @@ class PhysicalVerification(Document):
         cf_status = frappe.db.get_value("Clearing File", self.clearing_file, "status")
         if cf_status == "Pre-Lodged":
             frappe.db.set_value("Clearing File", self.clearing_file, "status", "On Process")
+        
+        if len(self.get("document", [])) > 0:
+            frappe.db.set_value("Physical Verification", self.name, "has_any_doc_attachments", 1)
 
     def set_currency(self):
         """Sync currency with Clearing File / company currency."""

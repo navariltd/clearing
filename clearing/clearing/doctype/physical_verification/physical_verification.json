@@ -37,7 +37,6 @@
   "paid_by",
   "section_break_pqpp",
   "physical_charges",
-  "make_journal",
   "total_charges",
   "total_charges_section",
   "column_break_idnw",
@@ -48,6 +47,7 @@
   "document_section_section",
   "attach_documents",
   "document",
+  "has_any_doc_attachments",
   "additional_notes_section",
   "notes",
   "column_break_c45ta",
@@ -188,8 +188,8 @@
   {
    "fieldname": "total_charges",
    "fieldtype": "Currency",
-   "options": "currency",
-   "label": "Total Charges Disbursed"
+   "label": "Total Charges Disbursed",
+   "options": "currency"
   },
   {
    "default": "0",
@@ -209,7 +209,7 @@
    "fieldtype": "Column Break"
   },
   {
-   "default": "0",
+   "default": "1",
    "fieldname": "invoice_paid",
    "fieldtype": "Check",
    "label": "Charges Paid"
@@ -293,8 +293,8 @@
   {
    "fieldname": "total_paid",
    "fieldtype": "Currency",
-   "options": "currency",
-   "label": "Total Paid"
+   "label": "Total Paid",
+   "options": "currency"
   },
   {
    "fieldname": "charge",
@@ -305,8 +305,8 @@
   {
    "fieldname": "paid_by",
    "fieldtype": "Currency",
-   "options": "currency",
-   "label": "Total Paid by Consignee"
+   "label": "Total Paid by Consignee",
+   "options": "currency"
   },
   {
    "fetch_from": "clearing_file.awbbl_no",
@@ -314,11 +314,6 @@
    "fieldtype": "Data",
    "in_standard_filter": 1,
    "label": "AWB/BL No"
-  },
-  {
-   "fieldname": "make_journal",
-   "fieldtype": "Button",
-   "label": "Make Journal"
   },
   {
    "fieldname": "column_break_lvdd",
@@ -332,19 +327,25 @@
   {
    "fieldname": "amount",
    "fieldtype": "Currency",
-   "options": "currency",
-   "label": "Amount"
+   "label": "Amount",
+   "options": "currency"
   },
   {
    "fieldname": "attachment",
    "fieldtype": "Attach",
    "label": "Attachment"
+  },
+  {
+   "default": "0",
+   "fieldname": "has_any_doc_attachments",
+   "fieldtype": "Check",
+   "label": "Has Documents Attached"
   }
  ],
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-11-24 09:11:48.334921",
+ "modified": "2025-12-13 10:17:32.024979",
  "modified_by": "Administrator",
  "module": "Clearing",
  "name": "Physical Verification",

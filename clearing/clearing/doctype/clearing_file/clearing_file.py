@@ -6,6 +6,7 @@ from frappe.contacts.doctype.address.address import get_address_display
 from frappe import _
 from frappe.utils import cstr, nowdate
 from erpnext import get_company_currency
+from clearing.clearing.utils.required_docs import get_required_document_types_by_mode
 
 
 class ClearingFile(Document):
