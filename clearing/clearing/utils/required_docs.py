@@ -52,3 +52,9 @@ def get_required_physical_verification_documents(mode: str) -> list:
 def get_required_port_clearance_documents(mode: str) -> list:
     """Get required port clearance documents by mode of transport."""
     return get_required_documents_by_type(mode, "port_clearance_document")
+
+
+@frappe.whitelist()
+def get_required_shipping_line_clearance_documents(mode: str) -> list:
+    """Get required shipping line clearance documents by mode of transport."""
+    return get_required_documents_by_type(mode, "shipping_line_clearance_document")

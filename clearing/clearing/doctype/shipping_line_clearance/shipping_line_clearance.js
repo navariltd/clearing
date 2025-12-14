@@ -5,6 +5,9 @@ frappe.require("/assets/clearing/js/stage_journal.js");
 
 frappe.ui.form.on("Shipping Line Clearance", {
   refresh: function (frm) {
+    // Check shipping line clearance documents status on refresh
+    check_shipping_line_clearance_documents_status(frm);
+
     handleDocumentExpiry(frm);
     customizeAttachDocumentsButton();
     frm.trigger("populate_container_fields");
@@ -96,6 +99,8 @@ frappe.ui.form.on("Shipping Line Clearance", {
 
   clearing_file: function (frm) {
     frm.trigger("populate_container_fields");
+    // Refresh document status when clearing file changes
+    check_shipping_line_clearance_documents_status(frm);
   },
 
   populate_container_fields: function (frm) {
@@ -117,7 +122,8 @@ frappe.ui.form.on("Shipping Line Clearance", {
     }
 
     frappe.call({
-      method: "clearing.clearing.doctype.shipping_line_clearance.shipping_line_clearance.get_cargo_container_data",
+      method:
+        "clearing.clearing.doctype.shipping_line_clearance.shipping_line_clearance.get_cargo_container_data",
       args: { clearing_file: frm.doc.clearing_file },
       callback(r) {
         if (!r.message) {
@@ -195,7 +201,12 @@ function handle_clearance_creation(
             // Open the new document form without saving
             frappe.set_route("Form", doctype, new_doc.name);
 
-            frappe.msgprint(__(success_message + " Please fill in the required fields and save."));
+            frappe.msgprint(
+              __(
+                success_message +
+                  " Please fill in the required fields and save."
+              )
+            );
           }
         },
       });
@@ -245,7 +256,6 @@ function customizeAttachDocumentsButton() {
   }
 }
 
-
 async function openDocumentAttachmentDialog(frm) {
   if (frm.is_new()) {
     await frm.save();
@@ -286,10 +296,31 @@ async function openDocumentAttachmentDialog(frm) {
             })),
           },
         },
-        callback() {
-          frappe.msgprint("Document attached successfully!");
-          d.hide();
-          frm.reload_doc();
+        callback(response) {
+          if (response && response.message) {
+            frappe.msgprint("Document attached successfully!");
+            d.hide();
+
+            // Update has_any_doc_attachments field to 1
+            frappe.call({
+              method: "frappe.client.set_value",
+              args: {
+                doctype: "Shipping Line Clearance",
+                name: frm.doc.name,
+                fieldname: "has_any_doc_attachments",
+                value: 1,
+              },
+              callback: function () {
+                frm.reload_doc();
+
+                // Check document status after successful attachment
+                setTimeout(
+                  () => check_shipping_line_clearance_documents_status(frm),
+                  500
+                );
+              },
+            });
+          }
         },
       });
     },
@@ -329,7 +360,9 @@ function getDialogFields(frm) {
           method: "frappe.client.get",
           args: { doctype: "Clearing Document Type", name: document_type },
           callback: function (r) {
-            const attributes_table = dialog.get_field("document_attributes").grid;
+            const attributes_table = dialog.get_field(
+              "document_attributes"
+            ).grid;
             attributes_table.df.data = (
               r.message?.clearing_document_attribute || []
             ).map((attr) => ({
@@ -384,4 +417,131 @@ function getDialogFields(frm) {
       ],
     },
   ];
+}
+
+// Trigger document check when documents are added/removed
+frappe.ui.form.on("Ship clearance Document", {
+  document_name: function (frm) {
+    check_shipping_line_clearance_documents_status(frm);
+  },
+
+  ship_clearance_document_remove: function (frm) {
+    setTimeout(() => check_shipping_line_clearance_documents_status(frm), 100);
+  },
+});
+
+function get_required_shipping_line_clearance_documents_js(
+  mode_of_transport,
+  callback
+) {
+  if (!mode_of_transport) {
+    if (callback) callback([]);
+    return;
+  }
+
+  frappe.call({
+    method:
+      "clearing.clearing.utils.required_docs.get_required_shipping_line_clearance_documents",
+    args: {
+      mode: mode_of_transport,
+    },
+    callback: function (r) {
+      const required_docs = r.message || [];
+      if (callback) callback(required_docs);
+    },
+  });
+}
+
+function check_shipping_line_clearance_documents_status(frm) {
+  if (!frm || !frm.doc) {
+    return;
+  }
+
+  // Only show after Shipping Line Clearance is saved
+  if (frm.is_new && frm.is_new()) {
+    clear_shipping_line_clearance_document_alert(frm);
+    return;
+  }
+
+  if (!frm.doc.clearing_file) {
+    clear_shipping_line_clearance_document_alert(frm);
+    return;
+  }
+
+  // Get mode of transport from clearing file
+  frappe.call({
+    method: "frappe.client.get_value",
+    args: {
+      doctype: "Clearing File",
+      filters: { name: frm.doc.clearing_file },
+      fieldname: "mode_of_transport",
+    },
+    callback: function (r) {
+      if (r.message && r.message.mode_of_transport) {
+        const mode_of_transport = r.message.mode_of_transport;
+
+        // Use callback to handle async response
+        get_required_shipping_line_clearance_documents_js(
+          mode_of_transport,
+          function (requiredDocs) {
+            const attachedDocs = (frm.doc.document || [])
+              .map((row) => row.document_name)
+              .filter(Boolean);
+
+            const missingDocs = requiredDocs.filter(
+              (doc) => !attachedDocs.includes(doc)
+            );
+
+            if (missingDocs.length) {
+              show_shipping_line_clearance_document_alert(
+                frm,
+                __(
+                  "Attach the following shipping line clearance documents: {0}",
+                  [missingDocs.join(", ")]
+                ),
+                "yellow"
+              );
+              frm.__all_shipping_line_clearance_docs_alert_shown = false;
+            } else {
+              clear_shipping_line_clearance_document_alert(frm);
+              if (!frm.__all_shipping_line_clearance_docs_alert_shown) {
+                frappe.show_alert(
+                  {
+                    message: __(
+                      "All required shipping line clearance documents are attached."
+                    ),
+                    indicator: "green",
+                  },
+                  5
+                );
+                frm.__all_shipping_line_clearance_docs_alert_shown = true;
+              }
+            }
+          }
+        );
+      }
+    },
+  });
+}
+
+function show_shipping_line_clearance_document_alert(
+  frm,
+  message,
+  indicator = "yellow"
+) {
+  if (!frm || !frm.dashboard) {
+    return;
+  }
+
+  frm.dashboard.clear_headline();
+  frm.dashboard.set_headline_alert(`<div>${message}</div>`, indicator);
+}
+
+function clear_shipping_line_clearance_document_alert(frm) {
+  if (!frm || !frm.dashboard) {
+    return;
+  }
+
+  frm.dashboard.clear_headline();
+  frm.dashboard.clear_comment && frm.dashboard.clear_comment();
 }
