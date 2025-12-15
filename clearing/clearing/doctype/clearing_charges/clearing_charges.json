@@ -9,6 +9,7 @@
  "field_order": [
   "consigee_details_section",
   "clearing_file",
+  "track_number",
   "currency",
   "column_break_ahtow",
   "status",
@@ -65,13 +66,13 @@
    "label": "Consigee Details"
   },
   {
-  "fieldname": "clearing_file",
-  "fieldtype": "Link",
-  "in_list_view": 1,
-  "label": "Clearing File",
-  "options": "Clearing File",
-  "reqd": 1
- },
+   "fieldname": "clearing_file",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Clearing File",
+   "options": "Clearing File",
+   "reqd": 1
+  },
   {
    "fetch_from": "clearing_file.currency",
    "fetch_if_empty": 1,
@@ -114,29 +115,29 @@
    "fieldname": "tra_clearance_total",
    "fieldtype": "Currency",
    "hidden": 1,
-   "options": "currency",
-   "label": "TRA Clearance Total"
+   "label": "TRA Clearance Total",
+   "options": "currency"
   },
   {
    "fieldname": "port_clearance_total",
    "fieldtype": "Currency",
    "hidden": 1,
-   "options": "currency",
-   "label": "Port Clearance Total"
+   "label": "Port Clearance Total",
+   "options": "currency"
   },
   {
    "fieldname": "shipment_clearance_total",
    "fieldtype": "Currency",
    "hidden": 1,
-   "options": "currency",
-   "label": "Shipment Clearance Total"
+   "label": "Shipment Clearance Total",
+   "options": "currency"
   },
   {
    "fieldname": "physical_clearance_total",
    "fieldtype": "Currency",
    "hidden": 1,
-   "options": "currency",
-   "label": "Physical Verification Total"
+   "label": "Physical Verification Total",
+   "options": "currency"
   },
   {
    "fieldname": "section_break_0qrth",
@@ -160,29 +161,29 @@
    "fieldname": "transport_total",
    "fieldtype": "Currency",
    "hidden": 1,
-   "options": "currency",
-   "label": "Transport Total"
+   "label": "Transport Total",
+   "options": "currency"
   },
   {
    "fieldname": "agency_fee",
    "fieldtype": "Currency",
    "hidden": 1,
-   "options": "currency",
-   "label": "Clearing Agency Fee Total"
+   "label": "Clearing Agency Fee Total",
+   "options": "currency"
   },
   {
    "fieldname": "total_debit",
    "fieldtype": "Currency",
    "in_list_view": 1,
    "in_standard_filter": 1,
-   "options": "currency",
-   "label": "Total Invoice Charges"
+   "label": "Total Invoice Charges",
+   "options": "currency"
   },
   {
    "fieldname": "total",
    "fieldtype": "Currency",
-   "options": "currency",
-   "label": "Total Debit Note Charges"
+   "label": "Total Debit Note Charges",
+   "options": "currency"
   },
   {
    "allow_on_submit": 1,
@@ -206,8 +207,8 @@
   {
    "fieldname": "total_clearing_charges",
    "fieldtype": "Currency",
-   "options": "currency",
-   "label": "Total Clearing Charges"
+   "label": "Total Clearing Charges",
+   "options": "currency"
   },
   {
    "fieldname": "reimbursement",
@@ -223,14 +224,14 @@
   {
    "fieldname": "total_paid_amount",
    "fieldtype": "Currency",
-   "options": "currency",
-   "label": "Total Reimbursed"
+   "label": "Total Reimbursed",
+   "options": "currency"
   },
   {
    "fieldname": "total_outstanding_amount",
    "fieldtype": "Currency",
-   "options": "currency",
-   "label": "Outstanding Reimbursement"
+   "label": "Outstanding Reimbursement",
+   "options": "currency"
   },
   {
    "fieldname": "clearing_services",
@@ -241,8 +242,8 @@
   {
    "fieldname": "balance",
    "fieldtype": "Currency",
-   "options": "currency",
-   "label": "Balance"
+   "label": "Balance",
+   "options": "currency"
   },
   {
    "fieldname": "section_break_pryv",
@@ -256,14 +257,14 @@
   {
    "fieldname": "total_sales_invoice",
    "fieldtype": "Currency",
-   "options": "currency",
-   "label": "Total Sales Invoice"
+   "label": "Total Sales Invoice",
+   "options": "currency"
   },
   {
    "fieldname": "outstanding_amount",
    "fieldtype": "Currency",
-   "options": "currency",
-   "label": "Total Outstanding Amount"
+   "label": "Total Outstanding Amount",
+   "options": "currency"
   },
   {
    "fieldname": "section_break_oyrg",
@@ -287,12 +288,18 @@
    "fieldname": "make_jv",
    "fieldtype": "Button",
    "label": "Make Journal "
+  },
+  {
+   "fetch_from": "clearing_file.road_consignment",
+   "fieldname": "track_number",
+   "fieldtype": "Data",
+   "label": "Track Number"
   }
  ],
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-10-28 06:21:11.238047",
+ "modified": "2025-12-15 08:38:53.350620",
  "modified_by": "Administrator",
  "module": "Clearing",
  "name": "Clearing Charges",

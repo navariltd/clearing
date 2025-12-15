@@ -14,7 +14,6 @@ from clearing.api.journal_entry import (
 from clearing.api.utils import (
     get_cash_or_bank_account,
     get_clearing_receivable_account,
-    get_expense_account,
 )
 from erpnext import get_company_currency
 
@@ -120,6 +119,7 @@ class ClearingCharges(Document):
         self.fetch_total_charges()
         self.populate_disbursement_and_reimbursement_tables()
         self._compute_reimbursement_totals()
+        self.update_charges_table()
 
     def set_currency(self):
         """Keep currency in sync with the linked Clearing File / company."""
@@ -578,6 +578,12 @@ class ClearingCharges(Document):
                 frappe.get_traceback(),
                 f"Clearing File update failed for {self.clearing_file}",
             )
+
+    def update_charges_table(self):
+        """Populate clearing_file and vehicle_number in charges from parent."""
+        for item in self.charges:
+            item.clearing_file = self.clearing_file
+            item.vehicle_number = self.track_number
 
 
 @frappe.whitelist()
