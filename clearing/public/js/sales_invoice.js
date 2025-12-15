@@ -1,6 +1,6 @@
 frappe.ui.form.on("Sales Invoice", {
   refresh: function (frm) {
-    // Add custom button to fetch items from Clearing Charges
+    // Custom button to fetch items from Clearing Charges
     if (frm.doc.docstatus === 0) {
       frm.add_custom_button(
         __("Clearing Charges"),
@@ -11,17 +11,17 @@ frappe.ui.form.on("Sales Invoice", {
             target: frm,
             setters: {
               clearing_file: "",
-              status: "",
+              status: "Pending Payment",
             },
             add_filters_group: 1,
             date_field: "modified",
-            // get_query() {
-            //   return {
-            //     filters: {
-            //       docstatus: 1, // Only submitted Clearing Charges
-            //     },
-            //   };
-            // },
+            get_query() {
+              return {
+                filters: {
+                  status: "Pending Payment", // Only submitted Clearing Charges
+                },
+              };
+            },
             action(selections) {
               if (selections && selections.length > 0) {
                 if (!frm.doc.company) {
@@ -58,7 +58,7 @@ frappe.ui.form.on("Sales Invoice", {
                           new_item.custom_clearing_file =
                             item.custom_clearing_file;
                           new_item.truck_number =
-                            item.custom_truck_number;
+                            item.truck_number;
                         });
 
                         // Set clearing details on the Sales Invoice header
@@ -73,12 +73,6 @@ frappe.ui.form.on("Sales Invoice", {
                         if (!frm.doc.currency && clearing_details.currency) {
                           frm.set_value("currency", clearing_details.currency);
                         }
-
-                        // Add custom field reference if available (optional)
-                        // You can add a custom field to Sales Invoice to track the clearing charges
-                        // if (frm.fields_dict.custom_clearing_charges) {
-                        //   frm.set_value("custom_clearing_charges", clearing_details.clearing_charges);
-                        // }
 
                         frm.refresh_field("items");
                         frm.refresh();
