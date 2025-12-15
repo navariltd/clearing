@@ -58,7 +58,7 @@ frappe.ui.form.on("Sales Invoice", {
                           new_item.custom_clearing_file =
                             item.custom_clearing_file;
                           new_item.truck_number =
-                            item.truck_number;
+                            item.custom_truck_number;
                         });
 
                         // Set clearing details on the Sales Invoice header
