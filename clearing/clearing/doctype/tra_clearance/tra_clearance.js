@@ -180,7 +180,7 @@ frappe.ui.form.on("TRA Clearance", {
                     // Populate table with attributes
                     r.message.clearing_document_attribute.forEach(
                       (aattribute) => {
-                        d.fieldhas_any_doc_attachmentss_dict.document_attributes.df.data.push(
+                        d.fields_dict.document_attributes.df.data.push(
                           {
                             attribute: aattribute.document_attribute,
                             mandatory: aattribute.mandatory,
