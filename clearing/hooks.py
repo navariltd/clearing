@@ -5,6 +5,8 @@ app_description = "Clearing and Forwarding"
 app_email = "nelsonnorbert87@gmail.com"
 app_license = "MIT"
 
+fixtures = [{"doctype": "Custom Field", "filters": [["module", "=", "Clearing"]]}]
+
 # Includes in <head>
 # ------------------
 
@@ -78,13 +80,9 @@ after_migrate = [
     "clearing.patches.load_custom_fields.execute",
 ]
 
-before_delete = [
-    "clearing.clearing.utils.allow_deletion_with_confirmation"
-]
+before_delete = ["clearing.clearing.utils.allow_deletion_with_confirmation"]
 
-validate = [
-    "clearing.clearing.utils.validate_unique_document"
-]
+validate = ["clearing.clearing.utils.validate_unique_document"]
 # Uninstallation
 # ------------
 
@@ -141,30 +139,30 @@ doc_events = {
     "TRA Clearance": {
         "on_submit": [
             "clearing.clearing.doctype.clearing_file.clearing_file.update_status_to_cleared",
-            "clearing.api.journal_entry.create_or_update_journal_entry_for_clearance"
+            "clearing.api.journal_entry.create_or_update_journal_entry_for_clearance",
         ],
-        "on_cancel": "clearing.api.journal_entry.cancel_journal_entry_on_clearance_cancel"
+        "on_cancel": "clearing.api.journal_entry.cancel_journal_entry_on_clearance_cancel",
     },
     "Shipping Line Clearance": {
         "on_submit": [
             "clearing.clearing.doctype.clearing_file.clearing_file.update_status_to_cleared",
-            "clearing.api.journal_entry.create_or_update_journal_entry_for_clearance"
+            "clearing.api.journal_entry.create_or_update_journal_entry_for_clearance",
         ],
-        "on_cancel": "clearing.api.journal_entry.cancel_journal_entry_on_clearance_cancel"
+        "on_cancel": "clearing.api.journal_entry.cancel_journal_entry_on_clearance_cancel",
     },
     "Physical Verification": {
         "on_submit": [
             "clearing.clearing.doctype.clearing_file.clearing_file.update_status_to_cleared",
-            "clearing.api.journal_entry.create_or_update_journal_entry_for_clearance"
+            "clearing.api.journal_entry.create_or_update_journal_entry_for_clearance",
         ],
-        "on_cancel": "clearing.api.journal_entry.cancel_journal_entry_on_clearance_cancel"
+        "on_cancel": "clearing.api.journal_entry.cancel_journal_entry_on_clearance_cancel",
     },
     "Port Clearance": {
         "on_submit": [
             "clearing.clearing.doctype.clearing_file.clearing_file.update_status_to_cleared",
-            "clearing.api.journal_entry.create_or_update_journal_entry_for_clearance"
+            "clearing.api.journal_entry.create_or_update_journal_entry_for_clearance",
         ],
-        "on_cancel": "clearing.api.journal_entry.cancel_journal_entry_on_clearance_cancel"
+        "on_cancel": "clearing.api.journal_entry.cancel_journal_entry_on_clearance_cancel",
     },
     "Sales Invoice": {
         "on_submit": "clearing.clearing.doctype.clearing_charges.clearing_charges.handle_invoice_status_change",
