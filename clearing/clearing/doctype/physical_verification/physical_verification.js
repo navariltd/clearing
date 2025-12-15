@@ -291,7 +291,9 @@ frappe.ui.form.on("Physical Verification", {
             invalid = true;
             frappe.msgprint({
               title: __("Missing Value"),
-              message: `Please fill the value for ${attr.attribute} as it is mandatory.`,
+              message: __("Please fill the value for {0} as it is mandatory.", [
+                attr.attribute,
+              ]),
               indicator: "red",
             });
           }

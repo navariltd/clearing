@@ -253,14 +253,18 @@ frappe.ui.form.on("TRA Clearance", {
           .querySelector(".attached-file-link")
           .getAttribute("href");
 
-        // Validate mandatory fields
+        // Validate mandatory fields - ADD SAFETY CHECK
         let invalid = false;
-        values.document_attributes.forEach((attr) => {
+        const attributes = values.document_attributes || []; // Default to empty array
+
+        attributes.forEach((attr) => {
           if (attr.mandatory && !attr.value) {
             invalid = true;
             frappe.msgprint({
               title: __("Missing Value"),
-              message: `Please fill the value for ${attr.attribute} as it is mandatory.`,
+              message: __("Please fill the value for {0} as it is mandatory.", [
+                attr.attribute,
+              ]),
               indicator: "red",
             });
           }
@@ -270,13 +274,11 @@ frappe.ui.form.on("TRA Clearance", {
         if (invalid) return;
 
         // Prepare the child table data
-        let clearing_document_attributes = values.document_attributes.map(
-          (attr) => ({
-            document_attribute: attr.attribute,
-            document_attribute_value: attr.value,
-            mandatory: attr.mandatory,
-          })
-        );
+        let clearing_document_attributes = attributes.map((attr) => ({
+          document_attribute: attr.attribute,
+          document_attribute_value: attr.value,
+          mandatory: attr.mandatory,
+        }));
 
         // Use Frappe API to create the document
         frappe.call({
