@@ -35,6 +35,7 @@ doctype_js = {
     # so this resolves to apps/clearing/clearing/clearing/journal_entry.js
     "Journal Entry": "clearing/journal_entry.js",
     "Payment Entry": "clearing/payment_entry.js",
+    "Sales Invoice": "public/js/sales_invoice.js",
 }
 # doctype_list_js = {"doctype" : "public/js/doctype_list.js"}
 # doctype_tree_js = {"doctype" : "public/js/doctype_tree.js"}
