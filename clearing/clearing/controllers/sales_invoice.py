@@ -15,6 +15,9 @@ def get_items_from_selected_clearing_charges(clearing_charges, company):
         dict: Contains sales_invoice_items and clearing_details
     """
     sales_invoice_items = []
+    default_income_account = frappe.db.get_value(
+        "Company", company, "default_income_account"
+    )
 
     try:
         clearing_charges_doc = frappe.get_doc("Clearing Charges", clearing_charges)
@@ -33,7 +36,9 @@ def get_items_from_selected_clearing_charges(clearing_charges, company):
             )
 
             # Get item details - charge_type is linked to Item doctype
-            item_name = frappe.db.get_value("Item", charge.charge_type, "item_name")
+            item_name, uom = frappe.db.get_value(
+                "Item", charge.charge_type, ["item_name", "stock_uom"]
+            )
 
             # Create item dictionary for sales invoice
             item_details = {
@@ -42,6 +47,8 @@ def get_items_from_selected_clearing_charges(clearing_charges, company):
                 "qty": 1,  # Charges typically have qty of 1
                 "rate": amount,
                 "amount": amount,
+                "uom": uom or "Nos",
+                "income_account": default_income_account,
                 "expense_account": expense_account,
                 "custom_clearing_file": clearing_charges_doc.clearing_file,
                 "custom_truck_number": charge.vehicle_number or "",
