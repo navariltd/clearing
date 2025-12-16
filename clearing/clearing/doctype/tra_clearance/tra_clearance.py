@@ -56,7 +56,7 @@ class TRAClearance(Document):
         """Ensure payment status is marked as 'Payment Completed' before submission."""
         if self.status != "Payment Completed":
             frappe.throw(
-                _("You cannot Complete TRA Clearance unless the Payment Completed.")
+                _("You cannot Complete T1 Clearance unless the Payment Completed.")
             )
 
     def on_update(self):
