@@ -1,5 +1,4 @@
 import re
-
 import frappe
 from frappe.model.document import Document
 from frappe.contacts.doctype.address.address import get_address_display
@@ -210,11 +209,11 @@ class ClearingFile(Document):
             if missing_clearing_docs:
                 doc_list = ", ".join(missing_clearing_docs)
                 message = _(
-                    "Cannot save TANCIS details while Clearing File status is {0}. Attach the following clearing documents first: {1}."
+                    "Cannot save TR8 details while Clearing File status is {0}. Attach the following clearing documents first: {1}."
                 ).format(current_status, doc_list)
             else:
                 message = _(
-                    "Cannot save TANCIS details while Clearing File status is {0}"
+                    "Cannot save TR8 details while Clearing File status is {0}"
                 ).format(current_status)
 
             frappe.throw(message, title=_("Status Must Be Open"))

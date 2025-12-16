@@ -321,7 +321,7 @@ frappe.ui.form.on("Clearing File", {
     frappe.validated = false;
     frappe.warn(
       __("Heads Up"),
-      __("You cannot change TANCIS details after it has been set."),
+      __("You cannot change TR8 details after it has been set."),
       () => {
         frm.__tancis_warning_shown = true;
         frappe.validated = true;
