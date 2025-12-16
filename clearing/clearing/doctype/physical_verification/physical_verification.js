@@ -61,7 +61,7 @@ frappe.ui.form.on("Physical Verification", {
                 customer: frm.doc.customer,
                 status: "Payment Pending",
               },
-              "TRA Clearance created successfully"
+              "T1 Clearance created successfully"
             );
 
             // Add conditional buttons based on the Clearing File status

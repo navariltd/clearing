@@ -228,7 +228,7 @@ frappe.ui.form.on("Clearing File", {
           customer: frm.doc.customer,
           status: "Payment Pending",
         },
-        "TRA Clearance created successfully"
+        "T1 Clearance created successfully"
       );
 
       // Shipping Line Clearance (show regardless, server will enforce order)
