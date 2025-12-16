@@ -847,11 +847,12 @@ function create_invoice_from_charges(frm, charges, postingDate, dialog) {
       frm
         .save()
         .then(() => {
-          frappe.msgprint(
+            const invoiceLink = `<a href="/app/sales-invoice/${invoiceDoc.name}" target="_blank">${invoiceDoc.name}</a>`;
+            frappe.msgprint(
             __("Sales Invoice {0} created successfully as Draft. You can edit and submit it.", [
-              invoiceDoc.name,
+              invoiceLink,
             ])
-          );
+            );
         })
         .then(() => frm.reload_doc());
     },

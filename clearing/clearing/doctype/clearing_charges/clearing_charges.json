@@ -70,6 +70,7 @@
    "fieldtype": "Link",
    "in_list_view": 1,
    "label": "Clearing File",
+   "link_filters": "[[\"Clearing File\",\"status\",\"=\",\"Cleared\"]]",
    "options": "Clearing File",
    "reqd": 1
   },
@@ -299,7 +300,7 @@
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-12-15 08:38:53.350620",
+ "modified": "2025-12-16 08:04:11.372444",
  "modified_by": "Administrator",
  "module": "Clearing",
  "name": "Clearing Charges",

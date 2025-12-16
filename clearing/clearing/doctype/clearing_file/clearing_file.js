@@ -228,7 +228,7 @@ frappe.ui.form.on("Clearing File", {
           customer: frm.doc.customer,
           status: "Payment Pending",
         },
-        "TRA Clearance created successfully"
+        "T1 Clearance created successfully"
       );
 
       // Shipping Line Clearance (show regardless, server will enforce order)
@@ -321,7 +321,7 @@ frappe.ui.form.on("Clearing File", {
     frappe.validated = false;
     frappe.warn(
       __("Heads Up"),
-      __("You cannot change TANCIS details after it has been set."),
+      __("You cannot change TR8 details after it has been set."),
       () => {
         frm.__tancis_warning_shown = true;
         frappe.validated = true;

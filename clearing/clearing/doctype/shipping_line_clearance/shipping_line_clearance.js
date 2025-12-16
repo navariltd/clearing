@@ -33,7 +33,7 @@ frappe.ui.form.on("Shipping Line Clearance", {
                 customer: frm.doc.customer,
                 status: "Payment Pending",
               },
-              "TRA Clearance created successfully"
+              "T1 Clearance created successfully"
             );
 
             handle_clearance_creation(
