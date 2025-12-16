@@ -6,10 +6,14 @@
  "field_order": [
   "journal_entry_settings_section",
   "column_break_1",
+  "default_expense_account",
   "cash_or_bank_group_account",
   "clearing_receivable_account",
   "column_break_xzgy",
-  "default_expense_account"
+  "shipping_line_clearance",
+  "port_clearance",
+  "physical_verification",
+  "tra_clearance"
  ],
  "fields": [
   {
@@ -36,8 +40,10 @@
    "options": "Clearing Receivable Account Group"
   },
   {
+   "description": "Checked documents must be submitted to update the status of a Clearing File to \"Cleared\"",
    "fieldname": "column_break_xzgy",
-   "fieldtype": "Column Break"
+   "fieldtype": "Column Break",
+   "label": "Related Clearing File Documents"
   },
   {
    "fieldname": "default_expense_account",
@@ -45,12 +51,36 @@
    "label": "Default Expense Account",
    "link_filters": "[[\"Account\",\"account_type\",\"=\",\"Expense Account\"]]",
    "options": "Account"
+  },
+  {
+   "default": "0",
+   "fieldname": "shipping_line_clearance",
+   "fieldtype": "Check",
+   "label": "Shipping Line Clearance"
+  },
+  {
+   "default": "0",
+   "fieldname": "port_clearance",
+   "fieldtype": "Check",
+   "label": "Port Clearance"
+  },
+  {
+   "default": "1",
+   "fieldname": "physical_verification",
+   "fieldtype": "Check",
+   "label": "Physical Verification"
+  },
+  {
+   "default": "0",
+   "fieldname": "tra_clearance",
+   "fieldtype": "Check",
+   "label": "T1 Clearance"
   }
  ],
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "links": [],
- "modified": "2025-12-11 10:31:42.725275",
+ "modified": "2025-12-16 13:43:10.682823",
  "modified_by": "Administrator",
  "module": "Clearing",
  "name": "Clearing Settings",
