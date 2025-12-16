@@ -593,6 +593,27 @@ def check_status_change_for_transit_bond(doc, method):
 
 @frappe.whitelist()
 def update_status_to_cleared(doc, method):
+    """
+    Update the status of a Clearing File to 'Cleared' when all related documents are submitted.
+
+    This function is triggered by a document hook and checks if all related clearance documents
+    (based on Clearing Settings configuration) are submitted. If all conditions are met,
+    it updates the Clearing File status to 'Cleared' and sets the cleared_date if not already set.
+
+    Args:
+        doc: The document object that triggered this hook
+        method: The hook method name (e.g., 'on_submit', 'on_update')
+
+    Returns:
+        None: Returns early if conditions are not met, otherwise updates the Clearing File status
+
+    Note:
+        - Related doctypes are determined by checkboxes in Clearing Settings
+        - Shipping Line Clearance is only checked if enabled in settings AND mode is not 'Air'
+        - The function returns early if any related doctype has no linked documents
+        - The function returns early if any related doctype has documents that are not submitted (docstatus != 1)
+        - Only saves the Clearing File if changes were made to status or cleared_date
+    """
     clearing_file_name = doc.clearing_file
 
     # Fetch the Clearing File's mode_of_transport
@@ -600,18 +621,40 @@ def update_status_to_cleared(doc, method):
         "Clearing File", clearing_file_name, "mode_of_transport"
     )
 
-    # List of related doctypes to check submission status
-    related_doctypes = [
-        {"doctype": "TRA Clearance", "link_field": "clearing_file"},
-        {"doctype": "Physical Verification", "link_field": "clearing_file"},
-        {"doctype": "Port Clearance", "link_field": "clearing_file"},
-    ]
+    # Fetch Clearing Settings to determine which documents are required
+    clearing_settings = frappe.get_single("Clearing Settings")
 
-    # Include Shipping Line Clearance only if mode is NOT Air
-    if mode_of_transport != "Air":
-        related_doctypes.append(
-            {"doctype": "Shipping Line Clearance", "link_field": "clearing_file"}
-        )
+    # Build related doctypes list dynamically based on Clearing Settings
+    related_doctypes = []
+
+    # Mapping of settings fields to doctype information
+    doctype_mapping = {
+        "tra_clearance": {"doctype": "TRA Clearance", "link_field": "clearing_file"},
+        "physical_verification": {
+            "doctype": "Physical Verification",
+            "link_field": "clearing_file",
+        },
+        "port_clearance": {"doctype": "Port Clearance", "link_field": "clearing_file"},
+        "shipping_line_clearance": {
+            "doctype": "Shipping Line Clearance",
+            "link_field": "clearing_file",
+        },
+    }
+
+    # Check each setting and add to related_doctypes if enabled
+    for setting_field, doctype_info in doctype_mapping.items():
+        is_enabled = clearing_settings.get(setting_field)
+
+        # Special handling for Shipping Line Clearance - skip if mode is Air
+        if setting_field == "shipping_line_clearance" and mode_of_transport == "Air":
+            continue
+
+        if is_enabled:
+            related_doctypes.append(doctype_info)
+
+    # If no documents are configured as required, exit early
+    if not related_doctypes:
+        return
 
     for doc_type in related_doctypes:
         linked_docs = frappe.get_all(
