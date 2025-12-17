@@ -115,7 +115,6 @@ class ClearingCharges(Document):
     def before_save(self):
         self.set_currency()
         self.fetch_total_charges()
-        self.populate_disbursement_and_reimbursement_tables()
         self.update_charges_table()
 
     def set_currency(self):
