@@ -168,6 +168,11 @@ doc_events = {
     "Sales Invoice": {
         "on_submit": "clearing.clearing.controllers.sales_invoice.update_clearing_charges_status_on_invoice_submit",
         "on_cancel": "clearing.clearing.controllers.sales_invoice.reset_clearing_charges_status_on_invoice_cancel",
+        "on_update_after_submit": "clearing.clearing.controllers.sales_invoice.handle_sales_invoice_payment_status",
+    },
+    "Payment Entry": {
+        "on_submit": "clearing.clearing.controllers.sales_invoice.handle_payment_entry_for_clearing_files",
+        "on_cancel": "clearing.clearing.controllers.sales_invoice.handle_payment_entry_cancel_for_clearing_files",
     },
 }
 
