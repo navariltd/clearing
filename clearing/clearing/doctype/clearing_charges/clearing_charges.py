@@ -108,9 +108,26 @@ def _set_numeric_if_changed(
 
 class ClearingCharges(Document):
     def before_save(self):
+        self.validate_clearing_file_status()
         self.set_currency()
         self.fetch_total_charges()
         self.update_charges_table()
+
+    def validate_clearing_file_status(self):
+        """Ensure the linked Clearing File has status 'Cleared' before saving."""
+        if not self.clearing_file:
+            frappe.throw(_("Clearing File is required to create Clearing Charges"))
+
+        clearing_file_status = frappe.db.get_value(
+            "Clearing File", self.clearing_file, "status"
+        )
+
+        if clearing_file_status != "Cleared":
+            frappe.throw(
+                _(
+                    "Cannot save Clearing Charges. The Clearing File '{0}' must have status 'Cleared'. Current status is '{1}'"
+                ).format(self.clearing_file, clearing_file_status or "Unknown")
+            )
 
     def set_currency(self):
         """Keep currency in sync with the linked Clearing File / company."""
