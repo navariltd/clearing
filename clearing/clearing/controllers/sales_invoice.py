@@ -134,6 +134,11 @@ def _update_single_clearing_charges_status(clearing_charges_name, invoice_name):
             )
             cc_doc.save(ignore_permissions=True)
 
+            # Also update the Clearing File status to "Charges Pending"
+            _update_clearing_file_status(
+                cc_doc.clearing_file, "Charges Pending", invoice_name
+            )
+
             frappe.msgprint(
                 f"Clearing Charges {clearing_charges_name} status updated to 'Billed'",
                 alert=True,
@@ -189,6 +194,9 @@ def _reset_single_clearing_charges_status(clearing_charges_name, invoice_name):
             )
             cc_doc.save(ignore_permissions=True)
 
+            # Also reset the Clearing File status back to "Cleared" or appropriate status
+            _update_clearing_file_status(cc_doc.clearing_file, "Cleared", invoice_name)
+
             frappe.msgprint(
                 f"Clearing Charges {clearing_charges_name} status reset to 'To Bill'",
                 alert=True,
@@ -197,4 +205,136 @@ def _reset_single_clearing_charges_status(clearing_charges_name, invoice_name):
         frappe.log_error(
             f"Failed to reset Clearing Charges {clearing_charges_name}: {str(e)}",
             "Clearing Charges Status Reset Error",
+        )
+
+
+def _update_clearing_file_status(clearing_file_name, new_status, reference_doc):
+    """Update Clearing File status."""
+    if not clearing_file_name:
+        return
+
+    try:
+        cf_doc = frappe.get_doc("Clearing File", clearing_file_name)
+
+        # Only update if the status is different
+        if cf_doc.status != new_status:
+            cf_doc.status = new_status
+            cf_doc.add_comment(
+                "Info", f"Status updated to '{new_status}' via {reference_doc}"
+            )
+            cf_doc.save(ignore_permissions=True)
+
+            frappe.msgprint(
+                f"Clearing File {clearing_file_name} status updated to '{new_status}'",
+                alert=True,
+            )
+    except Exception as e:
+        frappe.log_error(
+            f"Failed to update Clearing File {clearing_file_name}: {str(e)}",
+            "Clearing File Status Update Error",
+        )
+
+
+def handle_sales_invoice_payment_status(sales_invoice, method=None):
+    """Handle Sales Invoice status changes, particularly when paid."""
+    if not sales_invoice:
+        return
+
+    # Check if invoice is now paid
+    if sales_invoice.status == "Paid" or sales_invoice.outstanding_amount <= 0:
+        # Get clearing charges reference
+        clearing_charges_ref = sales_invoice.get("custom_clearing_charges")
+
+        clearing_files_to_update = set()
+
+        if clearing_charges_ref:
+            # Direct reference exists
+            cc_doc = frappe.get_doc("Clearing Charges", clearing_charges_ref)
+            if cc_doc.clearing_file:
+                clearing_files_to_update.add(cc_doc.clearing_file)
+        else:
+            # Find clearing files from items
+            for item in sales_invoice.get("items", []):
+                clearing_file = item.get("custom_clearing_file")
+                if clearing_file:
+                    clearing_files_to_update.add(clearing_file)
+
+        # Update all related Clearing Files to "Payment Received"
+        for cf_name in clearing_files_to_update:
+            _update_clearing_file_status(
+                cf_name, "Payment Received", sales_invoice.name
+            )
+
+
+def handle_payment_entry_for_clearing_files(payment_entry, method=None):
+    """Handle Payment Entry submission to update Clearing File status when invoice is paid."""
+    if not payment_entry or payment_entry.payment_type != "Receive":
+        return
+
+    # Get all Sales Invoice references from this payment entry
+    clearing_files_to_update = set()
+
+    for reference in payment_entry.get("references", []):
+        if reference.reference_doctype == "Sales Invoice":
+            invoice_name = reference.reference_name
+
+            # Check if this invoice is now fully paid
+            invoice = frappe.get_doc("Sales Invoice", invoice_name)
+
+            if invoice.outstanding_amount <= 0:
+                # Invoice is fully paid, find clearing files
+                clearing_charges_ref = invoice.get("custom_clearing_charges")
+
+                if clearing_charges_ref:
+                    cc_doc = frappe.get_doc("Clearing Charges", clearing_charges_ref)
+                    if cc_doc.clearing_file:
+                        clearing_files_to_update.add(cc_doc.clearing_file)
+                else:
+                    # Find from items
+                    for item in invoice.get("items", []):
+                        clearing_file = item.get("custom_clearing_file")
+                        if clearing_file:
+                            clearing_files_to_update.add(clearing_file)
+
+    # Update all clearing files to "Payment Received"
+    for cf_name in clearing_files_to_update:
+        _update_clearing_file_status(cf_name, "Payment Received", payment_entry.name)
+
+
+def handle_payment_entry_cancel_for_clearing_files(payment_entry, method=None):
+    """Handle Payment Entry cancellation to revert Clearing File status."""
+    if not payment_entry or payment_entry.payment_type != "Receive":
+        return
+
+    # Get all Sales Invoice references from this payment entry
+    clearing_files_to_revert = set()
+
+    for reference in payment_entry.get("references", []):
+        if reference.reference_doctype == "Sales Invoice":
+            invoice_name = reference.reference_name
+
+            # Reload invoice to check current outstanding
+            invoice = frappe.get_doc("Sales Invoice", invoice_name)
+
+            # If invoice has outstanding amount after cancellation, revert status
+            if invoice.outstanding_amount > 0:
+                clearing_charges_ref = invoice.get("custom_clearing_charges")
+
+                if clearing_charges_ref:
+                    cc_doc = frappe.get_doc("Clearing Charges", clearing_charges_ref)
+                    if cc_doc.clearing_file:
+                        clearing_files_to_revert.add(cc_doc.clearing_file)
+                else:
+                    # Find from items
+                    for item in invoice.get("items", []):
+                        clearing_file = item.get("custom_clearing_file")
+                        if clearing_file:
+                            clearing_files_to_revert.add(clearing_file)
+
+    # Revert clearing files to "Charges Pending"
+    for cf_name in clearing_files_to_revert:
+        _update_clearing_file_status(
+            cf_name,
+            "Charges Pending",
+            f"Payment Entry {payment_entry.name} (Cancelled)",
         )
