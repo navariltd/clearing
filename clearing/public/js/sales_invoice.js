@@ -11,7 +11,7 @@ frappe.ui.form.on("Sales Invoice", {
             target: frm,
             setters: {
               clearing_file: "",
-              status: "",
+              status: "To Bill",
             },
             add_filters_group: 1,
             date_field: "modified",

@@ -107,11 +107,6 @@ def _set_numeric_if_changed(
 
 
 class ClearingCharges(Document):
-    def before_submit(self):
-        # Update status to Billed when submitted
-        if (self.status or "").strip() != "Billed":
-            self.status = "Billed"
-
     def before_save(self):
         self.set_currency()
         self.fetch_total_charges()
