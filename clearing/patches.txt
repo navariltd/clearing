@@ -6,4 +6,3 @@
 # Patches added in this section will be executed after doctypes are migrated
 clearing.patches.add_clearing_file_to_journal_entry
 clearing.patches.remove_party_accounts_from_journal_entry
-clearing.patches.add_clearing_charges_reference_to_sales_invoice
