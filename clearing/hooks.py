@@ -165,6 +165,10 @@ doc_events = {
         ],
         "on_cancel": "clearing.api.journal_entry.cancel_journal_entry_on_clearance_cancel",
     },
+    "Sales Invoice": {
+        "on_submit": "clearing.clearing.controllers.sales_invoice.update_clearing_charges_status_on_invoice_submit",
+        "on_cancel": "clearing.clearing.controllers.sales_invoice.reset_clearing_charges_status_on_invoice_cancel",
+    },
 }
 
 # Scheduled Tasks
