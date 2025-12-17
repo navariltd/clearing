@@ -25,7 +25,9 @@ CLEARANCE_SOURCE_NAMES = {
 }
 
 
-def _update_fields_if_changed(doctype: str, docname: str, values: Dict[str, object]) -> bool:
+def _update_fields_if_changed(
+    doctype: str, docname: str, values: Dict[str, object]
+) -> bool:
     if not values:
         return False
 
@@ -71,9 +73,8 @@ def _get_target_clearing_file_status(
     if current_status not in payment_tracking_statuses:
         return current_status or "Draft"
 
-    if status == "Paid":
-        return "Payment Received"
-    if status == "Partially Paid":
+    # Map new Clearing Charges status to Clearing File status
+    if status == "Billed":
         return "Charges Pending"
     return "Charges Pending"
 
@@ -82,7 +83,9 @@ def _set_numeric_if_changed(
     doc: Document, fieldname: str, value: object, *, tolerance: float = 1e-9
 ) -> bool:
     current = getattr(doc, fieldname, None)
-    is_numeric = isinstance(value, numbers.Number) or isinstance(current, numbers.Number)
+    is_numeric = isinstance(value, numbers.Number) or isinstance(
+        current, numbers.Number
+    )
 
     if not is_numeric:
         if current == value:
@@ -104,21 +107,9 @@ def _set_numeric_if_changed(
 
 
 class ClearingCharges(Document):
-    def before_submit(self):
-        if (self.status or "").strip() != "Paid":
-            frappe.throw(
-                _("You can only submit Clearing Charges when Payment Status is Paid.")
-            )
-
     def before_save(self):
         self.set_currency()
-        self.ensure_primary_service_row(create=True, populate_from_legacy=True)
-        if self._should_prompt_for_invoice():
-            frappe.msgprint(_("Please generate invoice before printing Debit Note"))
-        self.sync_payment_status_from_invoice()
         self.fetch_total_charges()
-        self.populate_disbursement_and_reimbursement_tables()
-        self._compute_reimbursement_totals()
         self.update_charges_table()
 
     def set_currency(self):
@@ -242,9 +233,7 @@ class ClearingCharges(Document):
             if cint(getattr(charge, "is_invoice", 0)):
                 totals["invoice"] += amount
 
-        debit_note_total = (
-            non_invoice_total
-        )
+        debit_note_total = non_invoice_total
         invoice_total = totals["invoice"]
 
         services_total = 0.0
@@ -263,14 +252,7 @@ class ClearingCharges(Document):
         _set_numeric_if_changed(self, "total_debit", invoice_total)
         _set_numeric_if_changed(self, "total_sales_invoice", services_total)
         _set_numeric_if_changed(self, "outstanding_amount", services_outstanding_total)
-        _set_numeric_if_changed(
-            self, "total_clearing_charges", debit_note_total + services_total
-        )
-        _set_numeric_if_changed(
-            self,
-            "balance",
-            services_outstanding_total + flt(getattr(self, "total_outstanding_amount", 0)),
-        )
+        _set_numeric_if_changed(self, "balance", services_outstanding_total)
 
     def sync_payment_status_from_invoice(self):
         invoice_totals, any_invoice_submitted, has_invoice_rows = (
@@ -358,8 +340,10 @@ class ClearingCharges(Document):
         entries = list(journal_entries or [])
         if not charges:
             changed = False
-            for row in (getattr(self, "charges", []) or []):
-                if getattr(row, "disbursement", None) or getattr(row, "disbursed_date", None):
+            for row in getattr(self, "charges", []) or []:
+                if getattr(row, "disbursement", None) or getattr(
+                    row, "disbursed_date", None
+                ):
                     row.disbursement = None
                     row.disbursed_date = None
                     changed = True
@@ -375,7 +359,9 @@ class ClearingCharges(Document):
                 "posting_date": entry.get("posting_date"),
                 "user_remark": entry.get("user_remark"),
             }
-            inferred_type = self._extract_charge_type_from_remark(entry_map.get("user_remark"))
+            inferred_type = self._extract_charge_type_from_remark(
+                entry_map.get("user_remark")
+            )
             if inferred_type:
                 buckets.setdefault(inferred_type, []).append(entry_map)
             else:
@@ -436,9 +422,6 @@ class ClearingCharges(Document):
             else None
         )
         outstanding = flt((totals or {}).get("disb_outstanding", 0))
-
-        self.total_paid_amount = paid
-        self.total_outstanding_amount = outstanding
 
     def _gather_invoice_snapshot(self) -> Tuple[Dict[str, float], bool, bool]:
         invoice_totals = {"total": 0.0, "outstanding": 0.0, "paid": 0.0}
@@ -533,8 +516,10 @@ class ClearingCharges(Document):
         status = "Draft"
 
         if has_invoice_rows:
-            if invoice_outstanding <= 0 and disb_outstanding <= 0 and (
-                any_invoice_submitted or invoice_total > 0 or disb_total > 0
+            if (
+                invoice_outstanding <= 0
+                and disb_outstanding <= 0
+                and (any_invoice_submitted or invoice_total > 0 or disb_total > 0)
             ):
                 status = "Paid"
             elif not any_invoice_submitted:
@@ -569,10 +554,23 @@ class ClearingCharges(Document):
             return
         try:
             cf = frappe.get_doc("Clearing File", self.clearing_file)
-            target_status = _get_target_clearing_file_status(
-                self.status, cf.docstatus, cf.status
-            )
-            _update_fields_if_changed("Clearing File", cf.name, {"status": target_status})
+            # When Clearing Charges is Billed, set Clearing File to Charges Pending
+            if self.status == "Billed":
+                target_status = "Charges Pending"
+            else:
+                target_status = cf.status  # Keep current status
+
+            # Only update if Clearing File is in a payment tracking status
+            payment_tracking_statuses = {
+                "Delivered",
+                "Charges Pending",
+                "Payment Received",
+                "Closed",
+            }
+            if cf.status in payment_tracking_statuses:
+                _update_fields_if_changed(
+                    "Clearing File", cf.name, {"status": target_status}
+                )
         except Exception:
             frappe.log_error(
                 frappe.get_traceback(),
@@ -602,14 +600,18 @@ def get_disbursement_journal_entries(clearing_file: str) -> List[Dict]:
             "posting_date": d.posting_date,
             "date": d.posting_date,
             "remark": d.user_remark,
-            "charge_type": ClearingCharges._extract_charge_type_from_remark(d.user_remark),
+            "charge_type": ClearingCharges._extract_charge_type_from_remark(
+                d.user_remark
+            ),
         }
         for d in je_list
     ]
 
 
 @frappe.whitelist()
-def get_reimbursement_payments_for_journal_entries(clearing_file: str) -> Dict[str, object]:
+def get_reimbursement_payments_for_journal_entries(
+    clearing_file: str,
+) -> Dict[str, object]:
     if not clearing_file:
         return {"rows": [], "je_outstanding_total": 0.0}
 
@@ -709,12 +711,18 @@ def make_disbursement_journal_entries(
     party_account = defaults.get("party_account")
     bank_account = defaults.get("bank_account")
     if not party_account or not bank_account:
-        frappe.throw(_("Please configure the Receivable and Cash/Bank accounts in Clearing Settings."))
+        frappe.throw(
+            _(
+                "Please configure the Receivable and Cash/Bank accounts in Clearing Settings."
+            )
+        )
 
     posting_date = posting_date or nowdate()
     company = defaults.get("company")
     if not company:
-        frappe.throw(_("Company is not set on Clearing File {0}").format(doc.clearing_file))
+        frappe.throw(
+            _("Company is not set on Clearing File {0}").format(doc.clearing_file)
+        )
     voucher_type = defaults.get("voucher_type") or "Debit Note"
     party_type = defaults.get("party_type")
     party = defaults.get("party")
@@ -885,7 +893,9 @@ def get_disbursement_journal_entries_detailed(clearing_file: str) -> List[Dict]:
     results = []
     for je_name in submitted_je_names:
         je = frappe.get_doc("Journal Entry", je_name)
-        item_label, clearance_label, clearance_type = _describe_journal_entry_for_payment(je)
+        item_label, clearance_label, clearance_type = (
+            _describe_journal_entry_for_payment(je)
+        )
         _, _, outstanding = _summarise_party_payment_for_journal_entry(je)
         if outstanding > 0:
             results.append(
@@ -902,7 +912,9 @@ def get_disbursement_journal_entries_detailed(clearing_file: str) -> List[Dict]:
     return results
 
 
-def _describe_journal_entry_for_payment(je) -> Tuple[Optional[str], Optional[str], Optional[str]]:
+def _describe_journal_entry_for_payment(
+    je,
+) -> Tuple[Optional[str], Optional[str], Optional[str]]:
     remark = (getattr(je, "user_remark", "") or "").strip()
     if not remark:
         return None, None, None
@@ -992,7 +1004,11 @@ def compute_clearing_charges_status(name: str) -> Dict:
         return {"status": None}
     cc = frappe.get_doc("Clearing Charges", name)
     primary_row = cc.ensure_primary_service_row(create=True, populate_from_legacy=True)
-    inv_name = primary_row.reference_number if primary_row and primary_row.reference_number else None
+    inv_name = (
+        primary_row.reference_number
+        if primary_row and primary_row.reference_number
+        else None
+    )
     inv_status = (
         frappe.db.get_value("Sales Invoice", inv_name, "status") if inv_name else None
     )
@@ -1008,7 +1024,11 @@ def sync_clearing_charges_status(name: str) -> Dict:
 
     cc = frappe.get_doc("Clearing Charges", name)
     primary_row = cc.ensure_primary_service_row(create=True, populate_from_legacy=True)
-    inv_name = primary_row.reference_number if primary_row and primary_row.reference_number else None
+    inv_name = (
+        primary_row.reference_number
+        if primary_row and primary_row.reference_number
+        else None
+    )
     inv_status = (
         frappe.db.get_value("Sales Invoice", inv_name, "status") if inv_name else None
     )
@@ -1016,9 +1036,6 @@ def sync_clearing_charges_status(name: str) -> Dict:
     new_status = cc._compute_status_from_invoice_and_reimbursements(inv_status, totals)
 
     updates = {"status": new_status}
-    if totals:
-        updates["total_paid_amount"] = flt(totals.get("disb_paid", 0))
-        updates["total_outstanding_amount"] = flt(totals.get("disb_outstanding", 0))
 
     def _apply_if_changed(doc, field, value):
         if value is None:
@@ -1066,7 +1083,9 @@ def sync_clearing_charges_status(name: str) -> Dict:
                     "Sales Invoice", inv_name, "posting_date"
                 )
                 if inv_posting_date:
-                    dirty |= _apply_if_changed(primary_row, "reference_date", inv_posting_date)
+                    dirty |= _apply_if_changed(
+                        primary_row, "reference_date", inv_posting_date
+                    )
 
         if dirty:
             cc.save(ignore_permissions=True)
@@ -1083,7 +1102,9 @@ def sync_clearing_charges_status(name: str) -> Dict:
                 "invoice_status": inv_status,
                 "reference_date": inv_posting_date,
             }
-            _update_fields_if_changed(primary_row.doctype, primary_row.name, child_updates)
+            _update_fields_if_changed(
+                primary_row.doctype, primary_row.name, child_updates
+            )
 
     _propagate_status_to_clearing_file_name(cc.clearing_file, new_status)
     return {"status": new_status, "invoice_status": inv_status, "totals": totals}
@@ -1116,7 +1137,9 @@ def make_payment_entry_for_clearing_file(clearing_file: str):
 
     party_type, party = "Customer", cf.customer
     payment_type = "Receive"
-    party_account = get_clearing_receivable_account(company, currency=getattr(cf, "currency", None))
+    party_account = get_clearing_receivable_account(
+        company, currency=getattr(cf, "currency", None)
+    )
     if not party_account:
         frappe.throw(_("Please configure a Receivable Account in Clearing Settings"))
     bank_account = get_cash_or_bank_account(company)
@@ -1234,7 +1257,9 @@ def _propagate_status_to_clearing_file_name(cf_name: str, status: str):
         return
     try:
         cf = frappe.get_doc("Clearing File", cf_name)
-        target_status = _get_target_clearing_file_status(status, cf.docstatus, cf.status)
+        target_status = _get_target_clearing_file_status(
+            status, cf.docstatus, cf.status
+        )
         _update_fields_if_changed("Clearing File", cf.name, {"status": target_status})
     except Exception:
         pass
@@ -1274,7 +1299,9 @@ def _update_cc_for_clearing_file(cf_name: str):
                 "reference_date": inv_posting_date,
             }
             for service_name in service_names:
-                _update_fields_if_changed("Clearing Services", service_name, child_updates)
+                _update_fields_if_changed(
+                    "Clearing Services", service_name, child_updates
+                )
         _propagate_status_to_clearing_file_name(cf_name, new_status)
 
 

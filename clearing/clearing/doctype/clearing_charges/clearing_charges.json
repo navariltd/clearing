@@ -16,7 +16,6 @@
   "consigee",
   "service_charge_details_section",
   "charges",
-  "make_jv",
   "section_break_0qrth",
   "column_break_wv5mn",
   "transport_total",
@@ -28,25 +27,6 @@
   "shipment_clearance_total",
   "physical_clearance_total",
   "total",
-  "section_break_pryv",
-  "generate_invoice",
-  "clearing_services",
-  "section_break_oyrg",
-  "total_sales_invoice",
-  "column_break_lirf",
-  "outstanding_amount",
-  "section_break_ccym",
-  "make_payment",
-  "reimbursement",
-  "section_break_nqap",
-  "total_paid_amount",
-  "column_break_xcki",
-  "total_outstanding_amount",
-  "column_break_1",
-  "column_break_hwmm",
-  "total_clearing_charges",
-  "column_break_hqjie",
-  "balance",
   "amended_from"
  ],
  "fields": [
@@ -54,11 +34,6 @@
    "fieldname": "service_charge_details_section",
    "fieldtype": "Section Break",
    "label": "Charge Details"
-  },
-  {
-   "fieldname": "column_break_1",
-   "fieldtype": "Section Break",
-   "label": "Receivable"
   },
   {
    "fieldname": "consigee_details_section",
@@ -104,15 +79,6 @@
    "reqd": 1
   },
   {
-   "fieldname": "generate_invoice",
-   "fieldtype": "Button",
-   "label": "Generate Invoice"
-  },
-  {
-   "fieldname": "column_break_hqjie",
-   "fieldtype": "Column Break"
-  },
-  {
    "fieldname": "tra_clearance_total",
    "fieldtype": "Currency",
    "hidden": 1,
@@ -154,11 +120,6 @@
    "fieldtype": "Column Break"
   },
   {
-   "fieldname": "section_break_ccym",
-   "fieldtype": "Section Break",
-   "label": "Reimbursement from consignee"
-  },
-  {
    "fieldname": "transport_total",
    "fieldtype": "Currency",
    "hidden": 1,
@@ -188,12 +149,19 @@
   },
   {
    "allow_on_submit": 1,
+   "default": "To Bill",
    "fieldname": "status",
    "fieldtype": "Select",
-   "hidden": 1,
    "in_list_view": 1,
-   "label": "Payment Status",
-   "options": "Draft\nPending Payment\nPartially Paid\nPaid"
+   "label": "Billing Status",
+   "options": "To Bill\nBilled",
+   "read_only": 1
+  },
+  {
+   "fetch_from": "clearing_file.road_consignment",
+   "fieldname": "track_number",
+   "fieldtype": "Data",
+   "label": "Track Number"
   },
   {
    "fieldname": "amended_from",
@@ -204,103 +172,12 @@
    "print_hide": 1,
    "read_only": 1,
    "search_index": 1
-  },
-  {
-   "fieldname": "total_clearing_charges",
-   "fieldtype": "Currency",
-   "label": "Total Clearing Charges",
-   "options": "currency"
-  },
-  {
-   "fieldname": "reimbursement",
-   "fieldtype": "Table",
-   "label": "Reimbursement",
-   "options": "Consignee Reimbursement"
-  },
-  {
-   "fieldname": "make_payment",
-   "fieldtype": "Button",
-   "label": "Receive Payment"
-  },
-  {
-   "fieldname": "total_paid_amount",
-   "fieldtype": "Currency",
-   "label": "Total Reimbursed",
-   "options": "currency"
-  },
-  {
-   "fieldname": "total_outstanding_amount",
-   "fieldtype": "Currency",
-   "label": "Outstanding Reimbursement",
-   "options": "currency"
-  },
-  {
-   "fieldname": "clearing_services",
-   "fieldtype": "Table",
-   "label": "Service Invoice",
-   "options": "Clearing Services"
-  },
-  {
-   "fieldname": "balance",
-   "fieldtype": "Currency",
-   "label": "Balance",
-   "options": "currency"
-  },
-  {
-   "fieldname": "section_break_pryv",
-   "fieldtype": "Section Break",
-   "label": "Clearing Services"
-  },
-  {
-   "fieldname": "column_break_hwmm",
-   "fieldtype": "Column Break"
-  },
-  {
-   "fieldname": "total_sales_invoice",
-   "fieldtype": "Currency",
-   "label": "Total Sales Invoice",
-   "options": "currency"
-  },
-  {
-   "fieldname": "outstanding_amount",
-   "fieldtype": "Currency",
-   "label": "Total Outstanding Amount",
-   "options": "currency"
-  },
-  {
-   "fieldname": "section_break_oyrg",
-   "fieldtype": "Section Break",
-   "label": "Total Clearing Services"
-  },
-  {
-   "fieldname": "column_break_lirf",
-   "fieldtype": "Column Break"
-  },
-  {
-   "fieldname": "section_break_nqap",
-   "fieldtype": "Section Break",
-   "label": "Total Reimbursements"
-  },
-  {
-   "fieldname": "column_break_xcki",
-   "fieldtype": "Column Break"
-  },
-  {
-   "fieldname": "make_jv",
-   "fieldtype": "Button",
-   "label": "Make Journal "
-  },
-  {
-   "fetch_from": "clearing_file.road_consignment",
-   "fieldname": "track_number",
-   "fieldtype": "Data",
-   "label": "Track Number"
   }
  ],
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-12-16 08:04:11.372444",
+ "modified": "2025-12-17 07:13:57.758075",
  "modified_by": "Administrator",
  "module": "Clearing",
  "name": "Clearing Charges",

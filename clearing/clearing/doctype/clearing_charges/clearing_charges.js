@@ -34,8 +34,6 @@ frappe.ui.form.on("Clearing Charges", {
       fetch_and_set_reimbursements(frm);
     } else {
       clear_child_table(frm, "reimbursement");
-      frm.set_value("total_paid_amount", 0);
-      frm.set_value("total_outstanding_amount", 0);
     }
   },
 
@@ -49,8 +47,6 @@ frappe.ui.form.on("Clearing Charges", {
     } else {
       await setup_disbursement_link_behaviour(frm);
       clear_child_table(frm, "reimbursement");
-      frm.set_value("total_paid_amount", 0);
-      frm.set_value("total_outstanding_amount", 0);
     }
   },
 
@@ -296,13 +292,8 @@ function calculate_totals(frm) {
   set_number_field_if_changed(frm, "outstanding_amount", services_outstanding_total);
   set_number_field_if_changed(
     frm,
-    "total_clearing_charges",
-    total + services_total
-  );
-  set_number_field_if_changed(
-    frm,
     "balance",
-    services_outstanding_total + flt(frm.doc.total_outstanding_amount || 0)
+    services_outstanding_total
   );
 }
 
@@ -1012,11 +1003,6 @@ function fetch_and_set_reimbursements(frm) {
       rows.forEach((row) => {
         total_paid += flt(row.paid_amount || 0);
       });
-      frm.set_value("total_paid_amount", total_paid);
-      frm.set_value(
-        "total_outstanding_amount",
-        flt(payload.je_outstanding_total || 0)
-      );
 
       if (changed && !frm.is_new()) {
         frm.save().catch(() => null);

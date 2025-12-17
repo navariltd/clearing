@@ -11,14 +11,15 @@ frappe.ui.form.on("Sales Invoice", {
             target: frm,
             setters: {
               clearing_file: "",
-              status: "Pending Payment",
+              status: "To Bill",
             },
             add_filters_group: 1,
             date_field: "modified",
             get_query() {
               return {
                 filters: {
-                  status: "Pending Payment", // Only submitted Clearing Charges
+                  docstatus: 1, // Only submitted Clearing Charges
+                  status: "To Bill", // Only those not yet billed
                 },
               };
             },
@@ -74,6 +75,14 @@ frappe.ui.form.on("Sales Invoice", {
                         // Set currency if not already set
                         if (!frm.doc.currency && clearing_details.currency) {
                           frm.set_value("currency", clearing_details.currency);
+                        }
+
+                        // Store reference to Clearing Charges for status update
+                        if (frm.fields_dict.custom_clearing_charges) {
+                          frm.set_value(
+                            "custom_clearing_charges",
+                            clearing_details.clearing_charges
+                          );
                         }
 
                         frm.refresh_field("items");

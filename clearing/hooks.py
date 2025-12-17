@@ -166,18 +166,8 @@ doc_events = {
         "on_cancel": "clearing.api.journal_entry.cancel_journal_entry_on_clearance_cancel",
     },
     "Sales Invoice": {
-        "on_submit": "clearing.clearing.doctype.clearing_charges.clearing_charges.handle_invoice_status_change",
-        "on_cancel": "clearing.clearing.doctype.clearing_charges.clearing_charges.handle_invoice_status_change",
-        "on_update_after_submit": "clearing.clearing.doctype.clearing_charges.clearing_charges.handle_invoice_status_change",
-        "on_update": "clearing.clearing.doctype.clearing_charges.clearing_charges.handle_invoice_status_change",
-    },
-    # Keep Clearing Charges in sync when payments are posted or reversed
-    "Payment Entry": {
-        "onload": "clearing.clearing.doctype.clearing_charges.clearing_charges.clamp_payment_entry_references",
-        "validate": "clearing.clearing.doctype.clearing_charges.clearing_charges.clamp_payment_entry_references",
-        "on_submit": "clearing.clearing.doctype.clearing_charges.clearing_charges.handle_payment_entry_status_change",
-        "on_cancel": "clearing.clearing.doctype.clearing_charges.clearing_charges.handle_payment_entry_status_change",
-        "on_update_after_submit": "clearing.clearing.doctype.clearing_charges.clearing_charges.handle_payment_entry_status_change",
+        "on_submit": "clearing.clearing.controllers.sales_invoice.update_clearing_charges_status_on_invoice_submit",
+        "on_cancel": "clearing.clearing.controllers.sales_invoice.reset_clearing_charges_status_on_invoice_cancel",
     },
 }
 
