@@ -42,6 +42,11 @@ frappe.ui.form.on("Sales Invoice", {
                   return;
                 }
 
+                // Dictionary to aggregate items across all selections
+                let items_dict = {};
+                let clearing_details_list = [];
+                let processed_count = 0;
+
                 // Process each selected Clearing Charges document
                 selections.forEach(function (clearing_charges) {
                   frappe.call({
@@ -55,53 +60,110 @@ frappe.ui.form.on("Sales Invoice", {
                       if (response && response.message) {
                         const data = response.message;
 
-                        // Add items to Sales Invoice
+                        // Store clearing details
+                        clearing_details_list.push(data.clearing_details);
+
+                        // Aggregate items by item_code
                         data.sales_invoice_items.forEach((item) => {
-                          var new_item = frm.add_child("items");
-                          new_item.item_code = item.item_code;
-                          new_item.item_name = item.item_name;
-                          new_item.qty = item.qty;
-                          new_item.rate = item.rate;
-                          new_item.amount = item.amount;
-                          new_item.expense_account = item.expense_account;
-                          new_item.custom_clearing_file =
-                            item.custom_clearing_file;
-                          new_item.truck_number = item.custom_truck_number;
-                          new_item.income_account = item.income_account;
-                          new_item.uom = item.uom;
-                          new_item.conversion_factor = 1;
+                          if (items_dict[item.item_code]) {
+                            // Item already exists, increment qty and add to total amount
+                            items_dict[item.item_code].qty += item.qty;
+                            items_dict[item.item_code].total_amount +=
+                              item.amount;
+                            // Track clearing files
+                            if (
+                              item.custom_clearing_file &&
+                              !items_dict[
+                                item.item_code
+                              ].clearing_files.includes(
+                                item.custom_clearing_file
+                              )
+                            ) {
+                              items_dict[item.item_code].clearing_files.push(
+                                item.custom_clearing_file
+                              );
+                            }
+                          } else {
+                            // New item, initialize
+                            items_dict[item.item_code] = {
+                              item_code: item.item_code,
+                              item_name: item.item_name,
+                              qty: item.qty,
+                              total_amount: item.amount,
+                              uom: item.uom,
+                              income_account: item.income_account,
+                              expense_account: item.expense_account,
+                              clearing_files: item.custom_clearing_file
+                                ? [item.custom_clearing_file]
+                                : [],
+                            };
+                          }
                         });
 
-                        // Set clearing details on the Sales Invoice header
-                        const clearing_details = data.clearing_details;
+                        processed_count++;
 
-                        // Set customer if not already set
-                        if (!frm.doc.customer && clearing_details.customer) {
-                          frm.set_value("customer", clearing_details.customer);
+                        // Once all selections are processed, add aggregated items to invoice
+                        if (processed_count === selections.length) {
+                          // Add aggregated items to Sales Invoice
+                          for (let item_code in items_dict) {
+                            let item_data = items_dict[item_code];
+                            let qty = item_data.qty;
+                            let total_amount = item_data.total_amount;
+                            let rate = qty > 0 ? total_amount / qty : 0;
+
+                            var new_item = frm.add_child("items");
+                            new_item.item_code = item_data.item_code;
+                            new_item.item_name = item_data.item_name;
+                            new_item.qty = qty;
+                            new_item.rate = rate;
+                            new_item.amount = total_amount;
+                            new_item.uom = item_data.uom;
+                            new_item.income_account = item_data.income_account;
+                            new_item.expense_account =
+                              item_data.expense_account;
+                            new_item.conversion_factor = 1;
+
+                            // Set clearing file (first one if multiple)
+                            if (item_data.clearing_files.length > 0) {
+                              new_item.custom_clearing_file =
+                                item_data.clearing_files[0];
+                            }
+                          }
+
+                          // Set clearing details from first selection
+                          if (clearing_details_list.length > 0) {
+                            const first_details = clearing_details_list[0];
+
+                            // Set customer if not already set
+                            if (!frm.doc.customer && first_details.customer) {
+                              frm.set_value("customer", first_details.customer);
+                            }
+
+                            // Set currency if not already set
+                            if (!frm.doc.currency && first_details.currency) {
+                              frm.set_value("currency", first_details.currency);
+                            }
+
+                            // Store reference to first Clearing Charges for status update
+                            if (frm.fields_dict.custom_clearing_charges) {
+                              frm.set_value(
+                                "custom_clearing_charges",
+                                first_details.clearing_charges
+                              );
+                            }
+                          }
+
+                          frm.refresh_field("items");
+                          frm.refresh();
+
+                          frappe.show_alert({
+                            message: __(
+                              "Items fetched from {0} Clearing Charges document(s)",
+                              [selections.length]
+                            ),
+                            indicator: "green",
+                          });
                         }
-
-                        // Set currency if not already set
-                        if (!frm.doc.currency && clearing_details.currency) {
-                          frm.set_value("currency", clearing_details.currency);
-                        }
-
-                        // Store reference to Clearing Charges for status update
-                        if (frm.fields_dict.custom_clearing_charges) {
-                          frm.set_value(
-                            "custom_clearing_charges",
-                            clearing_details.clearing_charges
-                          );
-                        }
-
-                        frm.refresh_field("items");
-                        frm.refresh();
-
-                        frappe.show_alert({
-                          message: __("Items fetched from {0}", [
-                            clearing_charges,
-                          ]),
-                          indicator: "green",
-                        });
                       } else {
                         frappe.msgprint({
                           title: __("Error"),
