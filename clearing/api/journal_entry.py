@@ -17,7 +17,9 @@ from clearing.api.utils import (
 )
 
 
-def _find_receivable_account_for_currency(customer: str, company: str, currency: str) -> Optional[str]:
+def _find_receivable_account_for_currency(
+    customer: str, company: str, currency: str
+) -> Optional[str]:
     """Return a receivable account for the customer/company with the desired currency, if any."""
     if not (customer and company and currency):
         return None
@@ -98,9 +100,9 @@ def create_or_update_journal_entry_for_clearance(doc, method=None):
 
 def create_new_journal_entry_for_single_clearance(doc):
     """
-    Build a Journal Entry (Debit Note) for a single clearance document.
+    Build a Journal Entry for a single clearance document.
 
-    Debit: single receivable party account (from Clearing Settings)
+    Debit: default expense account (from Clearing Settings)
     Credit: Cash/Bank account (from Clearing Settings)
     """
     clearing_file = doc.clearing_file
@@ -117,43 +119,34 @@ def create_new_journal_entry_for_single_clearance(doc):
         "Company"
     )
     je.clearing_file = clearing_file
-    je.voucher_type = "Debit Note"
+    je.voucher_type = "Journal Entry"
     je.user_remark = _("{0}: {1} | Clearing File {2}").format(
         doc.doctype, doc.name, clearing_file
     )
 
     company = je.company
     customer = clearing_file_doc.customer
-    doc_currency = getattr(clearing_file_doc, "currency", None) or getattr(doc, "currency", None)
-
-    # Accounts
-    party_account = get_clearing_receivable_account(company, currency=doc_currency)
-    party_account_currency = (
-        frappe.get_cached_value("Account", party_account, "account_currency")
-        if party_account
-        else None
+    doc_currency = getattr(clearing_file_doc, "currency", None) or getattr(
+        doc, "currency", None
     )
 
-    if doc_currency and party_account_currency != doc_currency:
-        candidate = _find_receivable_account_for_currency(customer, company, doc_currency)
-        if candidate:
-            party_account = candidate
-            party_account_currency = doc_currency
-        else:
-            frappe.throw(
-                _(
-                    "Receivable account currency ({0}) does not match document currency ({1}). "
-                    "Please set a customer receivable account in currency {1} in Clearing Settings or Party Account."
-                ).format(party_account_currency or _("Unknown"), doc_currency)
-            )
+    # Get default expense account from Clearing Settings
+    expense_account = frappe.db.get_single_value("Clearing Settings", "default_expense_account")
 
-    if not party_account:
-        party_account = get_expense_account(doc.doctype, company, currency=doc_currency)
-        party_account_currency = (
-            frappe.get_cached_value("Account", party_account, "account_currency")
-            if party_account
-            else None
+    if not expense_account:
+        frappe.throw(
+            _(
+                "Default Expense Account is not set in Clearing Settings. Please configure it first."
+            )
         )
+
+    expense_account_currency = frappe.get_cached_value(
+        "Account", expense_account, "account_currency"
+    )
+
+    expense_account_currency = frappe.get_cached_value(
+        "Account", expense_account, "account_currency"
+    )
 
     bank_account = get_cash_or_bank_account(company)
     bank_account_currency = (
@@ -166,34 +159,37 @@ def create_new_journal_entry_for_single_clearance(doc):
     if doc_currency:
         je.multi_currency = 1
     elif company_currency and (
-        (party_account_currency and party_account_currency != company_currency)
+        (expense_account_currency and expense_account_currency != company_currency)
         or (bank_account_currency and bank_account_currency != company_currency)
     ):
         je.multi_currency = 1
 
-    party_exchange_rate = 1
+    expense_exchange_rate = 1
     bank_exchange_rate = 1
     if company_currency:
-        if party_account_currency and party_account_currency != company_currency:
-            party_exchange_rate = get_exchange_rate(party_account_currency, company_currency, je.posting_date)
+        if expense_account_currency and expense_account_currency != company_currency:
+            expense_exchange_rate = get_exchange_rate(
+                expense_account_currency, company_currency, je.posting_date
+            )
         if bank_account_currency and bank_account_currency != company_currency:
-            bank_exchange_rate = get_exchange_rate(bank_account_currency, company_currency, je.posting_date)
+            bank_exchange_rate = get_exchange_rate(
+                bank_account_currency, company_currency, je.posting_date
+            )
 
     amount = flt(doc.total_charges)
     amount_in_bank_currency = amount
     if doc_currency and bank_account_currency and bank_account_currency != doc_currency:
         amount_in_bank_currency = flt(
-            amount * get_exchange_rate(doc_currency, bank_account_currency, je.posting_date)
+            amount
+            * get_exchange_rate(doc_currency, bank_account_currency, je.posting_date)
         )
 
     je.append(
         "accounts",
         {
-            "account": party_account,
-            "party_type": "Customer",
-            "party": customer,
+            "account": expense_account,
             "debit_in_account_currency": amount,
-            "exchange_rate": party_exchange_rate,
+            "exchange_rate": expense_exchange_rate,
             "credit_in_account_currency": 0,
             "user_remark": _("{0}: {1}").format(doc.doctype, doc.name),
         },
@@ -553,7 +549,9 @@ def get_disbursement_journal_entry_defaults(clearing_file: str) -> Dict[str, obj
 
     customer = cf.customer
     if not customer:
-        frappe.throw(_("Customer is not set on Clearing File {0}").format(clearing_file))
+        frappe.throw(
+            _("Customer is not set on Clearing File {0}").format(clearing_file)
+        )
 
     party_account = get_clearing_receivable_account(company, currency=doc_currency)
     party_account_currency = (
@@ -562,7 +560,9 @@ def get_disbursement_journal_entry_defaults(clearing_file: str) -> Dict[str, obj
         else None
     )
     if doc_currency and party_account_currency != doc_currency:
-        candidate = _find_receivable_account_for_currency(customer, company, doc_currency)
+        candidate = _find_receivable_account_for_currency(
+            customer, company, doc_currency
+        )
         if candidate:
             party_account = candidate
             party_account_currency = doc_currency
@@ -575,7 +575,9 @@ def get_disbursement_journal_entry_defaults(clearing_file: str) -> Dict[str, obj
             )
 
     if not party_account:
-        party_account = get_expense_account("Clearing Charges", company, currency=doc_currency)
+        party_account = get_expense_account(
+            "Clearing Charges", company, currency=doc_currency
+        )
         party_account_currency = (
             frappe.get_cached_value("Account", party_account, "account_currency")
             if party_account
@@ -586,7 +588,9 @@ def get_disbursement_journal_entry_defaults(clearing_file: str) -> Dict[str, obj
 
     bank_account_currency = None
     if bank_account:
-        bank_account_currency = frappe.get_cached_value("Account", bank_account, "account_currency")
+        bank_account_currency = frappe.get_cached_value(
+            "Account", bank_account, "account_currency"
+        )
 
     return {
         "company": company,
@@ -622,7 +626,9 @@ def create_child_table_journal_entries(
     if not clearing_file:
         frappe.throw(_("Please set a Clearing File before creating a Journal Entry."))
 
-    selected = {name for name in selected_names if isinstance(name, str) and name.strip()}
+    selected = {
+        name for name in selected_names if isinstance(name, str) and name.strip()
+    }
     if not selected:
         frappe.throw(_("Please select at least one charge."))
 
@@ -630,7 +636,11 @@ def create_child_table_journal_entries(
     party_account = defaults.get("party_account")
     bank_account = defaults.get("bank_account")
     if not party_account or not bank_account:
-        frappe.throw(_("Please configure the Receivable and Cash/Bank accounts in Clearing Settings."))
+        frappe.throw(
+            _(
+                "Please configure the Receivable and Cash/Bank accounts in Clearing Settings."
+            )
+        )
 
     posting_date = posting_date or nowdate()
     company = defaults.get("company")
@@ -646,7 +656,11 @@ def create_child_table_journal_entries(
     if not rows:
         frappe.throw(_("No charge rows were found on this document."))
 
-    if doc_currency and party_account_currency and party_account_currency != doc_currency:
+    if (
+        doc_currency
+        and party_account_currency
+        and party_account_currency != doc_currency
+    ):
         frappe.throw(
             _(
                 "Receivable account currency ({0}) does not match document currency ({1}). "
@@ -674,9 +688,14 @@ def create_child_table_journal_entries(
         )
 
         amount_in_bank_currency = amount
-        if doc_currency and bank_account_currency and bank_account_currency != doc_currency:
+        if (
+            doc_currency
+            and bank_account_currency
+            and bank_account_currency != doc_currency
+        ):
             amount_in_bank_currency = flt(
-                amount * get_exchange_rate(doc_currency, bank_account_currency, posting_date)
+                amount
+                * get_exchange_rate(doc_currency, bank_account_currency, posting_date)
             )
 
         je = frappe.new_doc("Journal Entry")
@@ -749,7 +768,9 @@ def create_child_table_journal_entries(
             if disbursed_date_field:
                 updates[disbursed_date_field] = posting_date
             if updates and getattr(row, "doctype", None) and getattr(row, "name", None):
-                frappe.db.set_value(row.doctype, row.name, updates, update_modified=False)
+                frappe.db.set_value(
+                    row.doctype, row.name, updates, update_modified=False
+                )
 
         created.append({"charge": row_name, "journal_entry": je.name})
 
@@ -759,7 +780,9 @@ def create_child_table_journal_entries(
     return created
 
 
-def _build_stage_disbursement_remarks(doc, row, label_field: Optional[str]) -> tuple[str, str]:
+def _build_stage_disbursement_remarks(
+    doc, row, label_field: Optional[str]
+) -> tuple[str, str]:
     doc_label = getattr(doc, "doctype", "Clearance")
     doc_name = (getattr(doc, "name", "") or "").strip()
     clearing_file = (getattr(doc, "clearing_file", "") or "").strip()
@@ -824,7 +847,9 @@ def _find_party_account_for_entries(
             if row.get("party_type") != party_type or row.get("party") != party:
                 continue
             debit = flt(row.get("debit_in_account_currency") or row.get("debit") or 0)
-            credit = flt(row.get("credit_in_account_currency") or row.get("credit") or 0)
+            credit = flt(
+                row.get("credit_in_account_currency") or row.get("credit") or 0
+            )
             if payment_type == "Receive" and debit > 0:
                 candidate_accounts.append(row.get("account"))
             elif payment_type == "Pay" and credit > 0:
@@ -865,9 +890,9 @@ def make_payment_entry_from_journal_entries(
     for je in docs:
         if je.docstatus != 1:
             frappe.throw(
-                _("Only submitted Journal Entry can be used to create a Payment Entry (found {0}).").format(
-                    je.name
-                )
+                _(
+                    "Only submitted Journal Entry can be used to create a Payment Entry (found {0})."
+                ).format(je.name)
             )
 
     base_company = docs[0].company
@@ -879,18 +904,22 @@ def make_payment_entry_from_journal_entries(
     party = base_summary.party
     if not party_type or not party:
         frappe.throw(
-            _("Journal Entry {0} is missing party information. Cannot prepare Payment Entry.").format(
-                docs[0].name
-            )
+            _(
+                "Journal Entry {0} is missing party information. Cannot prepare Payment Entry."
+            ).format(docs[0].name)
         )
 
     summaries = []
     total_outstanding = 0.0
     for je in docs:
-        summary = get_journal_entry_party_summary(je, party_type=party_type, party=party)
+        summary = get_journal_entry_party_summary(
+            je, party_type=party_type, party=party
+        )
         if summary.party_type != party_type or summary.party != party:
             frappe.throw(
-                _("Journal Entry {0} has a different party from the others.").format(je.name)
+                _("Journal Entry {0} has a different party from the others.").format(
+                    je.name
+                )
             )
         outstanding = flt(summary.outstanding or 0)
         if outstanding <= 0:
@@ -913,7 +942,9 @@ def make_payment_entry_from_journal_entries(
     pe.posting_date = nowdate()
 
     joined_names = ", ".join(names)
-    note = _(f"[CFJE:{joined_names}] Clearing payment for {party_type or ''} {party or ''}")
+    note = _(
+        f"[CFJE:{joined_names}] Clearing payment for {party_type or ''} {party or ''}"
+    )
     try:
         meta = frappe.get_meta("Payment Entry")
     except Exception:
@@ -931,7 +962,9 @@ def make_payment_entry_from_journal_entries(
 
     party_details = None
     if party_type and party:
-        from erpnext.accounts.doctype.payment_entry.payment_entry import get_party_details
+        from erpnext.accounts.doctype.payment_entry.payment_entry import (
+            get_party_details,
+        )
 
         party_details = get_party_details(
             company=pe.company,
@@ -941,7 +974,9 @@ def make_payment_entry_from_journal_entries(
             cost_center=None,
         )
 
-    preferred_party_account = _find_party_account_for_entries(docs, party_type, party, payment_type)
+    preferred_party_account = _find_party_account_for_entries(
+        docs, party_type, party, payment_type
+    )
     if preferred_party_account:
         if payment_type == "Receive":
             pe.paid_from = preferred_party_account
@@ -1019,7 +1054,9 @@ def make_payment_entry_from_journal_entries(
         consumed.add(je.name)
 
     if total_allocated <= 0:
-        frappe.throw(_("Unable to allocate any amount against the selected Journal Entries."))
+        frappe.throw(
+            _("Unable to allocate any amount against the selected Journal Entries.")
+        )
 
     if remaining is not None and remaining > 0 and total_allocated < flt(total_amount):
         total_allocated = flt(total_amount) - remaining
@@ -1043,9 +1080,9 @@ def make_payment_entry_from_journal_entries(
     skipped = [name for name in names if name not in consumed]
     if skipped:
         frappe.msgprint(
-            _("Some Journal Entries were skipped because they have no outstanding balance or no amount was allocated: {0}").format(
-                ", ".join(skipped)
-            ),
+            _(
+                "Some Journal Entries were skipped because they have no outstanding balance or no amount was allocated: {0}"
+            ).format(", ".join(skipped)),
             alert=True,
         )
 
