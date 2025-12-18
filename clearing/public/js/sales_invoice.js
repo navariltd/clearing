@@ -107,16 +107,13 @@ frappe.ui.form.on("Sales Invoice", {
                           // Add aggregated items to Sales Invoice
                           for (let item_code in items_dict) {
                             let item_data = items_dict[item_code];
-                            let qty = item_data.qty;
                             let total_amount = item_data.total_amount;
-                            let rate = qty > 0 ? total_amount / qty : 0;
 
                             var new_item = frm.add_child("items");
                             new_item.item_code = item_data.item_code;
                             new_item.item_name = item_data.item_name;
-                            new_item.qty = qty;
-                            new_item.rate = rate;
-                            new_item.amount = total_amount;
+                            new_item.qty = 1;
+                            new_item.rate = total_amount;
                             new_item.uom = item_data.uom;
                             new_item.income_account = item_data.income_account;
                             new_item.expense_account =
