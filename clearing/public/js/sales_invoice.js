@@ -10,17 +10,25 @@ frappe.ui.form.on("Sales Invoice", {
             doctype: "Clearing Charges",
             target: frm,
             setters: {
+              consigee: frm.doc.customer || "",
               clearing_file: "",
               status: "To Bill",
             },
             add_filters_group: 1,
             date_field: "modified",
             get_query() {
+              let filters = {
+                docstatus: 1, // Only submitted Clearing Charges
+                status: "To Bill", // Only those not yet billed
+              };
+
+              // Add customer filter if set in the invoice
+              if (frm.doc.customer) {
+                filters.consigee = frm.doc.customer;
+              }
+
               return {
-                filters: {
-                  docstatus: 1, // Only submitted Clearing Charges
-                  status: "To Bill", // Only those not yet billed
-                },
+                filters: filters,
               };
             },
             action(selections) {
