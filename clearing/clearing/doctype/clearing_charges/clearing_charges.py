@@ -237,7 +237,7 @@ class ClearingCharges(Document):
                 totals["shipment"] += amount
             elif charge_type == "Physical Verification":
                 totals["physical"] += amount
-            elif charge_type == "Transport":
+            elif charge_type == "Administrative Operation Cost":
                 totals["transport"] += amount
             elif charge_type == "Clearing Agency Fee":
                 totals["agency_fee"] += amount
