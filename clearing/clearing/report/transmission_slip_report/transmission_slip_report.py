@@ -108,7 +108,7 @@ def get_data(filters):
         LEFT JOIN 
             `tabTRA Clearance` tc ON tc.clearing_file = cf.name
         WHERE 
-            cf.docstatus = 1
+            cc.docstatus = 1
             {conditions}
         ORDER BY 
             cf.tancis_lodging_date DESC, cf.name DESC
