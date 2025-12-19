@@ -135,9 +135,9 @@ def _update_single_clearing_charges_status(clearing_charges_name, invoice_name):
             )
             cc_doc.save(ignore_permissions=True)
 
-            # Also update the Clearing File status to "Charges Pending"
+            # Also update the Clearing File status to "Payment Pending"
             _update_clearing_file_status(
-                cc_doc.clearing_file, "Charges Pending", invoice_name
+                cc_doc.clearing_file, "Payment Pending", invoice_name
             )
 
             frappe.msgprint(
@@ -332,10 +332,10 @@ def handle_payment_entry_cancel_for_clearing_files(payment_entry, method=None):
                         if clearing_file:
                             clearing_files_to_revert.add(clearing_file)
 
-    # Revert clearing files to "Charges Pending"
+    # Revert clearing files to "Payment Pending"
     for cf_name in clearing_files_to_revert:
         _update_clearing_file_status(
             cf_name,
-            "Charges Pending",
+            "Payment Pending",
             f"Payment Entry {payment_entry.name} (Cancelled)",
         )
