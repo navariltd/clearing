@@ -12,6 +12,7 @@ frappe.ui.form.on("Sales Invoice", {
             setters: {
               consigee: frm.doc.customer || "",
               clearing_file: "",
+              custom_product: "",
               status: "To Bill",
             },
             add_filters_group: 1,
