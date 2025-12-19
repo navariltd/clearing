@@ -28,25 +28,26 @@ def get_items_from_selected_clearing_charges(clearing_charges, company):
             if not charge.is_invoice:
                 continue
 
-            amount = charge.amount or 0
-
             # Get the expense account for this charge type (item)
             expense_account = get_expense_account(
                 "Clearing Charges", company, currency=clearing_charges_doc.currency
             )
 
             # Get item details - charge_type is linked to Item doctype
-            item_name, uom = frappe.db.get_value(
-                "Item", charge.charge_type, ["item_name", "stock_uom"]
+            # Fetch standard_rate from Item table for the fixed rate
+            item_name, uom, standard_rate = frappe.db.get_value(
+                "Item", charge.charge_type, ["item_name", "stock_uom", "standard_rate"]
             )
+
+            rate = standard_rate or 0
 
             # Create item dictionary for sales invoice
             item_details = {
                 "item_code": charge.charge_type,
                 "item_name": item_name or charge.charge_type,
-                "qty": 1,  # Charges typically have qty of 1
-                "rate": amount,
-                "amount": amount,
+                "qty": 1,  # Will be counted on client side
+                "rate": rate,
+                "amount": rate,  # 1 * rate
                 "uom": uom or "Nos",
                 "income_account": default_income_account,
                 "expense_account": expense_account,
