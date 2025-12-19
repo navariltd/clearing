@@ -26,6 +26,13 @@ def get_columns():
             "width": 100,
         },
         {
+            "fieldname": "customer",
+            "label": _("Customer"),
+            "fieldtype": "Link",
+            "options": "Customer",
+            "width": 150,
+        },
+        {
             "fieldname": "tancis_lodging_date",
             "label": _("Lodging Date"),
             "fieldtype": "Date",
@@ -87,12 +94,13 @@ def get_data(filters):
             cf.tancis_lodging_date,
             cf.tansad_no,
             cf.status,
+            cf.customer,
             cf.road_consignment,
             cf.cargo_description,
             cc.currency,
             cc.name as clearing_charges,
             cc.total_debit,
-            tc.name as custom_t1_ref__no
+            tc.custom_t1_ref__no
         FROM 
             `tabClearing File` cf
         LEFT JOIN 
