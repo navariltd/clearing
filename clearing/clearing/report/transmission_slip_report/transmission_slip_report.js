@@ -30,7 +30,7 @@ frappe.query_reports["Transmission Slip Report"] = {
       label: __("Status"),
       fieldtype: "Select",
       options: [
-        { value: "Draft", label: __("Draft") },
+        { value: "", label: __("") },
         { value: "Open", label: __("Open") },
         { value: "Pre-Lodged", label: __("Pre-Lodged") },
         { value: "On Process", label: __("On Process") },
