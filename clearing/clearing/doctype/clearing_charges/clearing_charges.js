@@ -10,7 +10,7 @@ const CLEARANCE_SOURCES = [
 const CLEARANCE_SOURCE_NAMES = CLEARANCE_SOURCES.map(([, chargeType]) => chargeType);
 
 const INVOICE_DEFAULT_ROWS = [
-  { charge_type: "Transport" },
+  { charge_type: "Administrative Operation Cost" },
   { charge_type: "Clearing Agency Fee" },
 ];
 
