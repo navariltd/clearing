@@ -17,24 +17,24 @@ const INVOICE_DEFAULT_ROWS = [
 ];
 
 frappe.ui.form.on("Clearing Charges", {
-  async onload(frm) {
-    await setup_disbursement_link_behaviour(frm);
+  onload(frm) {
+    setup_disbursement_link_behaviour(frm);
   },
 
-  async refresh(frm) {
-    await setup_disbursement_link_behaviour(frm);
+  refresh(frm) {
+    setup_disbursement_link_behaviour(frm);
 
     // Only populate charges and calculate totals for new/unsaved documents
     // to prevent marking saved documents as dirty
     if (frm.is_new() || frm.doc.__unsaved) {
-      await populate_clearance_charges(frm);
+      populate_clearance_charges(frm);
       calculate_totals(frm);
     }
 
     if (frm.doc.clearing_file) {
       // Only fetch and sync data for saved documents
       if (!frm.is_new() && !frm.doc.__unsaved) {
-        await sync_clearing_service_invoice_metrics(frm);
+        sync_clearing_service_invoice_metrics(frm);
         fetch_and_set_disbursements(frm);
         fetch_and_set_reimbursements(frm);
       }
@@ -43,15 +43,15 @@ frappe.ui.form.on("Clearing Charges", {
     }
   },
 
-  async clearing_file(frm) {
-    await populate_clearance_charges(frm, { resetExisting: true });
+  clearing_file(frm) {
+    populate_clearance_charges(frm, { resetExisting: true });
     if (frm.doc.clearing_file) {
-      await setup_disbursement_link_behaviour(frm);
-      await sync_clearing_service_invoice_metrics(frm);
+      setup_disbursement_link_behaviour(frm);
+      sync_clearing_service_invoice_metrics(frm);
       fetch_and_set_disbursements(frm);
       fetch_and_set_reimbursements(frm);
     } else {
-      await setup_disbursement_link_behaviour(frm);
+      setup_disbursement_link_behaviour(frm);
       clear_child_table(frm, "reimbursement");
     }
   },
@@ -84,7 +84,7 @@ frappe.ui.form.on("Clearing Charges", {
     open_invoice_dialog(frm, eligible);
   },
 
-  async make_jv(frm) {
+  make_jv(frm) {
     if (frm.is_new()) {
       frappe.msgprint(__("Please save the document first."));
       return;
@@ -110,7 +110,7 @@ frappe.ui.form.on("Clearing Charges", {
     open_make_jv_dialog(frm, eligible);
   },
 
-  async make_payment(frm) {
+  make_payment(frm) {
     if (frm.is_new()) {
       frappe.msgprint(__("Please save the document first."));
       return;
@@ -123,7 +123,7 @@ frappe.ui.form.on("Clearing Charges", {
       return;
     }
 
-    await ensure_manual_charge_disbursement_entries(frm);
+    ensure_manual_charge_disbursement_entries(frm);
 
     frappe.call({
       method:
@@ -145,7 +145,7 @@ frappe.ui.form.on("Clearing Charges", {
   },
 });
 
-async function populate_clearance_charges(frm, options = {}) {
+function populate_clearance_charges(frm, options = {}) {
   const resetExisting = !!options.resetExisting;
 
   if (resetExisting) {
@@ -160,11 +160,11 @@ async function populate_clearance_charges(frm, options = {}) {
     return;
   }
 
-  const records = await Promise.all(
+  Promise.all(
     CLEARANCE_SOURCES.map(([doctype, chargeType]) =>
       fetch_clearance_rows(frm, doctype, chargeType)
     )
-  );
+  ).then((records) => {
 
   const totalsByCharge = {};
   records.flat().forEach(({ charge_type, amount }) => {
@@ -181,6 +181,7 @@ async function populate_clearance_charges(frm, options = {}) {
 
   frm.refresh_field("charges");
   calculate_totals(frm);
+  });
 }
 
 function ensure_default_invoice_rows(frm) {
@@ -361,7 +362,7 @@ function get_invoice_eligible_charges(frm) {
     });
 }
 
-async function setup_disbursement_link_behaviour(frm) {
+function setup_disbursement_link_behaviour(frm) {
   if (!frm) {
     return;
   }
@@ -372,7 +373,7 @@ async function setup_disbursement_link_behaviour(frm) {
     frm.__disbursement_behaviour_initialized = true;
   }
 
-  await ensure_disbursement_defaults(frm);
+  ensure_disbursement_defaults(frm);
 }
 
 function configure_disbursement_query(frm) {
@@ -479,7 +480,7 @@ function configure_disbursement_new_doc_defaults(frm) {
   };
 }
 
-async function ensure_disbursement_defaults(frm) {
+function ensure_disbursement_defaults(frm) {
   const clearingFile = (frm.doc.clearing_file || "").trim();
   if (!clearingFile) {
     frm.__disbursement_defaults = null;
@@ -775,7 +776,7 @@ function get_pending_manual_charge_names(frm) {
     .map((charge) => charge.name);
 }
 
-async function ensure_manual_charge_disbursement_entries(frm) {
+function ensure_manual_charge_disbursement_entries(frm) {
   if (!frm || !frm.doc || !frm.doc.name) {
     return;
   }
@@ -786,7 +787,7 @@ async function ensure_manual_charge_disbursement_entries(frm) {
   }
 
   try {
-    await frappe.call({
+    frappe.call({
       method:
         "clearing.clearing.doctype.clearing_charges.clearing_charges.make_disbursement_journal_entries",
       args: {
@@ -800,7 +801,7 @@ async function ensure_manual_charge_disbursement_entries(frm) {
       freeze: true,
       freeze_message: __("Preparing Journal Entries..."),
     });
-    await frm.reload_doc();
+    frm.reload_doc();
   } catch (error) {
     console.error(
       "Failed to create disbursement journals for manual charges",
@@ -1357,7 +1358,7 @@ function upsert_primary_clearing_service(frm, invoiceDoc) {
   frm.refresh_field("clearing_services");
 }
 
-async function sync_clearing_service_invoice_metrics(frm) {
+function sync_clearing_service_invoice_metrics(frm) {
   const rows = frm.doc.clearing_services || [];
   if (!rows.length) {
     calculate_totals(frm);
@@ -1377,7 +1378,7 @@ async function sync_clearing_service_invoice_metrics(frm) {
   }
 
   try {
-    const { message } = await frappe.call({
+    const { message } = frappe.call({
       method: "frappe.client.get_list",
       args: {
         doctype: "Sales Invoice",
