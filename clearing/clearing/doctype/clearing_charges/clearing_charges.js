@@ -7,7 +7,9 @@ const CLEARANCE_SOURCES = [
   ["Physical Verification", "Physical Verification"],
 ];
 
-const CLEARANCE_SOURCE_NAMES = CLEARANCE_SOURCES.map(([, chargeType]) => chargeType);
+const CLEARANCE_SOURCE_NAMES = CLEARANCE_SOURCES.map(
+  ([, chargeType]) => chargeType
+);
 
 const INVOICE_DEFAULT_ROWS = [
   { charge_type: "Administrative Operation Cost" },
@@ -22,16 +24,20 @@ frappe.ui.form.on("Clearing Charges", {
   async refresh(frm) {
     await setup_disbursement_link_behaviour(frm);
 
-    const needsTotals = frm.is_new() || !!frm.doc.__unsaved;
-    if (needsTotals) {
+    // Only populate charges and calculate totals for new/unsaved documents
+    // to prevent marking saved documents as dirty
+    if (frm.is_new() || frm.doc.__unsaved) {
+      await populate_clearance_charges(frm);
       calculate_totals(frm);
     }
 
     if (frm.doc.clearing_file) {
-      await populate_clearance_charges(frm);
-      await sync_clearing_service_invoice_metrics(frm);
-      fetch_and_set_disbursements(frm);
-      fetch_and_set_reimbursements(frm);
+      // Only fetch and sync data for saved documents
+      if (!frm.is_new() && !frm.doc.__unsaved) {
+        await sync_clearing_service_invoice_metrics(frm);
+        fetch_and_set_disbursements(frm);
+        fetch_and_set_reimbursements(frm);
+      }
     } else {
       clear_child_table(frm, "reimbursement");
     }
@@ -52,19 +58,25 @@ frappe.ui.form.on("Clearing Charges", {
 
   generate_invoice(frm) {
     if (frm.is_new()) {
-      frappe.msgprint(__("Please save the Clearing Charges before generating an invoice."));
+      frappe.msgprint(
+        __("Please save the Clearing Charges before generating an invoice.")
+      );
       return;
     }
 
     if (!frm.doc.consigee) {
-      frappe.msgprint(__("Please set a Consignee before generating an invoice."));
+      frappe.msgprint(
+        __("Please set a Consignee before generating an invoice.")
+      );
       return;
     }
 
     const eligible = get_invoice_eligible_charges(frm);
     if (!eligible.length) {
       frappe.msgprint(
-        __("All invoice charges have already been invoiced. Mark new rows as 'Is Invoice' to proceed.")
+        __(
+          "All invoice charges have already been invoiced. Mark new rows as 'Is Invoice' to proceed."
+        )
       );
       return;
     }
@@ -79,13 +91,19 @@ frappe.ui.form.on("Clearing Charges", {
     }
 
     if (!frm.doc.clearing_file) {
-      frappe.msgprint(__("Please set a Clearing File before creating Journal Entries."));
+      frappe.msgprint(
+        __("Please set a Clearing File before creating Journal Entries.")
+      );
       return;
     }
 
     const eligible = get_journal_entry_eligible_charges(frm);
     if (!eligible.length) {
-      frappe.msgprint(__("All non-invoice charges already have a Journal Entry or have zero amount."));
+      frappe.msgprint(
+        __(
+          "All non-invoice charges already have a Journal Entry or have zero amount."
+        )
+      );
       return;
     }
 
@@ -99,19 +117,26 @@ frappe.ui.form.on("Clearing Charges", {
     }
 
     if (!frm.doc.clearing_file) {
-      frappe.msgprint(__("Please set a Clearing File before making a payment."));
+      frappe.msgprint(
+        __("Please set a Clearing File before making a payment.")
+      );
       return;
     }
 
     await ensure_manual_charge_disbursement_entries(frm);
 
     frappe.call({
-      method: "clearing.clearing.doctype.clearing_charges.clearing_charges.get_disbursement_journal_entries_detailed",
+      method:
+        "clearing.clearing.doctype.clearing_charges.clearing_charges.get_disbursement_journal_entries_detailed",
       args: { clearing_file: frm.doc.clearing_file },
       callback(r) {
         const rows = r.message || [];
         if (!rows.length) {
-          frappe.msgprint(__("No outstanding Journal Entries were found for this Clearing File."));
+          frappe.msgprint(
+            __(
+              "No outstanding Journal Entries were found for this Clearing File."
+            )
+          );
           return;
         }
         open_payment_dialog(frm, rows);
@@ -142,15 +167,13 @@ async function populate_clearance_charges(frm, options = {}) {
   );
 
   const totalsByCharge = {};
-  records
-    .flat()
-    .forEach(({ charge_type, amount }) => {
-      if (!charge_type) {
-        return;
-      }
-      const key = charge_type;
-      totalsByCharge[key] = (totalsByCharge[key] || 0) + flt(amount || 0);
-    });
+  records.flat().forEach(({ charge_type, amount }) => {
+    if (!charge_type) {
+      return;
+    }
+    const key = charge_type;
+    totalsByCharge[key] = (totalsByCharge[key] || 0) + flt(amount || 0);
+  });
 
   Object.entries(totalsByCharge).forEach(([chargeType, total]) => {
     add_or_update_clearance_row(frm, chargeType, total);
@@ -161,7 +184,9 @@ async function populate_clearance_charges(frm, options = {}) {
 }
 
 function ensure_default_invoice_rows(frm) {
-  const existing = new Set((frm.doc.charges || []).map((row) => row.charge_type));
+  const existing = new Set(
+    (frm.doc.charges || []).map((row) => row.charge_type)
+  );
   let changed = false;
   INVOICE_DEFAULT_ROWS.forEach(({ charge_type }) => {
     if (existing.has(charge_type)) {
@@ -204,7 +229,9 @@ function fetch_clearance_rows(frm, doctype, chargeType) {
 
 function add_or_update_clearance_row(frm, chargeType, amount) {
   const rows = frm.doc.charges || [];
-  let target = rows.find((row) => !row.is_invoice && row.charge_type === chargeType);
+  let target = rows.find(
+    (row) => !row.is_invoice && row.charge_type === chargeType
+  );
 
   if (!target) {
     target = frm.add_child("charges");
@@ -289,18 +316,20 @@ function calculate_totals(frm) {
   set_number_field_if_changed(frm, "agency_fee", agency_fee_total);
   set_number_field_if_changed(frm, "total_debit", invoice_total);
   set_number_field_if_changed(frm, "total_sales_invoice", services_total);
-  set_number_field_if_changed(frm, "outstanding_amount", services_outstanding_total);
   set_number_field_if_changed(
     frm,
-    "balance",
+    "outstanding_amount",
     services_outstanding_total
   );
+  set_number_field_if_changed(frm, "balance", services_outstanding_total);
 }
 
 function get_invoice_eligible_charges(frm) {
   const currency =
     frm.doc.currency ||
-    (frappe.boot && frappe.boot.sysdefaults && frappe.boot.sysdefaults.currency);
+    (frappe.boot &&
+      frappe.boot.sysdefaults &&
+      frappe.boot.sysdefaults.currency);
 
   return (frm.doc.charges || [])
     .filter((charge) => {
@@ -316,7 +345,10 @@ function get_invoice_eligible_charges(frm) {
       const idx = charge.idx || index + 1;
       const key = charge.name || `charge-${idx}`;
       const chargeCurrency = currency;
-      const formattedAmount = format_currency(flt(charge.amount || 0), chargeCurrency);
+      const formattedAmount = format_currency(
+        flt(charge.amount || 0),
+        chargeCurrency
+      );
       return {
         key,
         idx,
@@ -404,7 +436,10 @@ function configure_disbursement_new_doc_defaults(frm) {
       return {};
     }
 
-    const { headerRemark, accountRemark } = build_disbursement_user_remark(frm, charge);
+    const { headerRemark, accountRemark } = build_disbursement_user_remark(
+      frm,
+      charge
+    );
 
     const routeOptions = {
       clearing_file: frm.doc.clearing_file,
@@ -421,12 +456,14 @@ function configure_disbursement_new_doc_defaults(frm) {
     }
 
     const defaults =
-      (frm.__disbursement_defaults && frm.__disbursement_defaults.defaults) || null;
+      (frm.__disbursement_defaults && frm.__disbursement_defaults.defaults) ||
+      null;
     if (defaults) {
       if (defaults.company) {
         routeOptions.company = defaults.company;
       }
-      routeOptions.voucher_type = defaults.voucher_type || routeOptions.voucher_type;
+      routeOptions.voucher_type =
+        defaults.voucher_type || routeOptions.voucher_type;
       const accountRows = build_disbursement_account_rows(
         defaults,
         charge,
@@ -472,24 +509,35 @@ async function ensure_disbursement_defaults(frm) {
       return defaults;
     })
     .catch((error) => {
-      console.error("Failed to load disbursement journal entry defaults", error);
-      frm.__disbursement_defaults = { clearing_file: clearingFile, defaults: null };
+      console.error(
+        "Failed to load disbursement journal entry defaults",
+        error
+      );
+      frm.__disbursement_defaults = {
+        clearing_file: clearingFile,
+        defaults: null,
+      };
       return null;
     })
     .finally(() => {
       frm.__disbursement_defaults_request = null;
     });
 
-  frm.__disbursement_defaults_request = { clearing_file: clearingFile, promise };
+  frm.__disbursement_defaults_request = {
+    clearing_file: clearingFile,
+    promise,
+  };
   return promise;
 }
 
 function build_disbursement_user_remark(frm, charge) {
   const docLabel =
-    (frm.doctype && typeof frm.doctype === "string" && frm.doctype.trim()) || "Clearing Charges";
+    (frm.doctype && typeof frm.doctype === "string" && frm.doctype.trim()) ||
+    "Clearing Charges";
   const docName = (frm.doc && frm.doc.name && frm.doc.name.trim()) || "";
   const clearingFile = (frm.doc.clearing_file || "").trim();
-  const chargeType = (charge && charge.charge_type && charge.charge_type.trim()) || "";
+  const chargeType =
+    (charge && charge.charge_type && charge.charge_type.trim()) || "";
 
   const coreParts = [];
   if (docName) {
@@ -523,7 +571,8 @@ function build_disbursement_account_rows(defaults, charge, remark, parentDoc) {
   }
 
   const rows = [];
-  const referenceType = parentDoc && parentDoc.doctype ? parentDoc.doctype : null;
+  const referenceType =
+    parentDoc && parentDoc.doctype ? parentDoc.doctype : null;
   const referenceName = parentDoc && parentDoc.name ? parentDoc.name : null;
   const accountRemark = remark || null;
 
@@ -579,7 +628,9 @@ function build_disbursement_account_rows(defaults, charge, remark, parentDoc) {
 function get_journal_entry_eligible_charges(frm) {
   const currency =
     frm.doc.currency ||
-    (frappe.boot && frappe.boot.sysdefaults && frappe.boot.sysdefaults.currency);
+    (frappe.boot &&
+      frappe.boot.sysdefaults &&
+      frappe.boot.sysdefaults.currency);
 
   return (frm.doc.charges || [])
     .filter((charge) => {
@@ -604,7 +655,10 @@ function get_journal_entry_eligible_charges(frm) {
       const idx = charge.idx || index + 1;
       const key = charge.name || `charge-${idx}`;
       const amount = flt(charge.amount || 0);
-      const label = `${charge.charge_type || __("Charge")} | ${format_currency(amount, currency)}`;
+      const label = `${charge.charge_type || __("Charge")} | ${format_currency(
+        amount,
+        currency
+      )}`;
       return {
         key,
         idx,
@@ -642,7 +696,10 @@ function open_make_jv_dialog(frm, eligibleCharges) {
         fieldname: "posting_date",
         label: __("Posting Date"),
         fieldtype: "Date",
-        default: frappe.datetime && frappe.datetime.nowdate ? frappe.datetime.nowdate() : undefined,
+        default:
+          frappe.datetime && frappe.datetime.nowdate
+            ? frappe.datetime.nowdate()
+            : undefined,
       },
     ],
     primary_action_label: __("Create"),
@@ -657,7 +714,9 @@ function open_make_jv_dialog(frm, eligibleCharges) {
         .map((value) => valueMap[value])
         .filter((charge) => !!charge && !!charge.name);
       if (!rows.length) {
-        frappe.msgprint(__("Unable to locate the selected charges. Please try again."));
+        frappe.msgprint(
+          __("Unable to locate the selected charges. Please try again.")
+        );
         return;
       }
 
@@ -743,9 +802,14 @@ async function ensure_manual_charge_disbursement_entries(frm) {
     });
     await frm.reload_doc();
   } catch (error) {
-    console.error("Failed to create disbursement journals for manual charges", error);
+    console.error(
+      "Failed to create disbursement journals for manual charges",
+      error
+    );
     frappe.msgprint(
-      __("Unable to prepare Journal Entries for the outstanding manual charges. Please try again.")
+      __(
+        "Unable to prepare Journal Entries for the outstanding manual charges. Please try again."
+      )
     );
   }
 }
@@ -794,7 +858,9 @@ function open_invoice_dialog(frm, eligibleCharges) {
         .map((value) => valueMap[value])
         .filter((charge) => !!charge);
       if (!charges.length) {
-        frappe.msgprint(__("Unable to locate the selected charges. Please try again."));
+        frappe.msgprint(
+          __("Unable to locate the selected charges. Please try again.")
+        );
         return;
       }
       create_invoice_from_charges(frm, charges, values.posting_date, dialog);
@@ -838,12 +904,13 @@ function create_invoice_from_charges(frm, charges, postingDate, dialog) {
       frm
         .save()
         .then(() => {
-            const invoiceLink = `<a href="/app/sales-invoice/${invoiceDoc.name}" target="_blank">${invoiceDoc.name}</a>`;
-            frappe.msgprint(
-            __("Sales Invoice {0} created successfully as Draft. You can edit and submit it.", [
-              invoiceLink,
-            ])
-            );
+          const invoiceLink = `<a href="/app/sales-invoice/${invoiceDoc.name}" target="_blank">${invoiceDoc.name}</a>`;
+          frappe.msgprint(
+            __(
+              "Sales Invoice {0} created successfully as Draft. You can edit and submit it.",
+              [invoiceLink]
+            )
+          );
         })
         .then(() => frm.reload_doc());
     },
@@ -862,7 +929,12 @@ function mark_charges_as_invoiced(frm, charges, invoiceDoc) {
     const doctype = charge.doctype || "Clearing Charge Detail";
     const docname = charge.name;
     charge.invoice_reference = invoiceDoc.name;
-    frappe.model.set_value(doctype, docname, "invoice_reference", invoiceDoc.name);
+    frappe.model.set_value(
+      doctype,
+      docname,
+      "invoice_reference",
+      invoiceDoc.name
+    );
   });
 
   frm.refresh_field("charges");
@@ -893,7 +965,8 @@ function detach_charges_from_invoice(frm, invoiceName) {
 
 function fetch_and_set_disbursements(frm) {
   frappe.call({
-    method: "clearing.clearing.doctype.clearing_charges.clearing_charges.get_disbursement_journal_entries",
+    method:
+      "clearing.clearing.doctype.clearing_charges.clearing_charges.get_disbursement_journal_entries",
     args: { clearing_file: frm.doc.clearing_file },
     callback(r) {
       const rows = r.message || [];
@@ -923,7 +996,11 @@ function fetch_and_set_disbursements(frm) {
         }
         const chargeType = (charge.charge_type || "").trim();
         let entry = null;
-        if (chargeType && buckets.has(chargeType) && buckets.get(chargeType).length) {
+        if (
+          chargeType &&
+          buckets.has(chargeType) &&
+          buckets.get(chargeType).length
+        ) {
           entry = buckets.get(chargeType).shift();
         } else if (unmatched.length) {
           entry = unmatched.shift();
@@ -980,7 +1057,8 @@ function inferChargeTypeFromRemark(remark) {
 
 function fetch_and_set_reimbursements(frm) {
   frappe.call({
-    method: "clearing.clearing.doctype.clearing_charges.clearing_charges.get_reimbursement_payments_for_journal_entries",
+    method:
+      "clearing.clearing.doctype.clearing_charges.clearing_charges.get_reimbursement_payments_for_journal_entries",
     args: { clearing_file: frm.doc.clearing_file },
     callback: function (r) {
       const payload = r.message || {};
@@ -1018,7 +1096,13 @@ function clear_child_table(frm, fieldname) {
   }
 }
 
-function update_child_table_if_changed(frm, fieldname, rows, assigner, snapshot) {
+function update_child_table_if_changed(
+  frm,
+  fieldname,
+  rows,
+  assigner,
+  snapshot
+) {
   const current = (frm.doc[fieldname] || []).map(snapshot);
   const target = rows.map(snapshot);
 
@@ -1078,7 +1162,9 @@ function objects_shallow_equal(a, b) {
 function open_payment_dialog(frm, rows) {
   const currency =
     frm.doc.currency ||
-    (frappe.boot && frappe.boot.sysdefaults && frappe.boot.sysdefaults.currency);
+    (frappe.boot &&
+      frappe.boot.sysdefaults &&
+      frappe.boot.sysdefaults.currency);
 
   const options = rows.map((row, index) => {
     const outstanding = flt(row.outstanding || 0);
@@ -1098,7 +1184,7 @@ function open_payment_dialog(frm, rows) {
       value: row.journal_entry,
       outstanding,
       checked: false,
-      description: __('Outstanding: {0}', [formattedOutstanding]),
+      description: __("Outstanding: {0}", [formattedOutstanding]),
     };
   });
 
@@ -1125,7 +1211,9 @@ function open_payment_dialog(frm, rows) {
         fieldname: "amount_to_pay",
         label: __("Total Amount to Pay (optional)"),
         fieldtype: "Currency",
-        description: __("Leave blank to pay the full outstanding amount for the selected entries."),
+        description: __(
+          "Leave blank to pay the full outstanding amount for the selected entries."
+        ),
       },
     ],
     primary_action_label: __("Proceed"),
@@ -1140,7 +1228,11 @@ function open_payment_dialog(frm, rows) {
         .map((name) => rowByName[name])
         .filter((row) => !!row);
       if (!selectedRows.length) {
-        frappe.msgprint(__("The selected Journal Entries could not be found. Please try again."));
+        frappe.msgprint(
+          __(
+            "The selected Journal Entries could not be found. Please try again."
+          )
+        );
         return;
       }
 
@@ -1149,7 +1241,9 @@ function open_payment_dialog(frm, rows) {
         0
       );
       if (totalOutstanding <= 0) {
-        frappe.msgprint(__("The selected Journal Entries have no outstanding balance."));
+        frappe.msgprint(
+          __("The selected Journal Entries have no outstanding balance.")
+        );
         return;
       }
 
@@ -1169,7 +1263,8 @@ function open_payment_dialog(frm, rows) {
         args.total_amount = amount;
       }
       frappe.call({
-        method: "clearing.api.journal_entry.make_payment_entry_from_journal_entries",
+        method:
+          "clearing.api.journal_entry.make_payment_entry_from_journal_entries",
         args,
         freeze: true,
         freeze_message: __("Preparing Payment Entry..."),
@@ -1238,9 +1333,19 @@ function upsert_primary_clearing_service(frm, invoiceDoc) {
     "reference_date",
     invoiceDoc.posting_date || frappe.datetime.nowdate()
   );
-  frappe.model.set_value(doctype, docname, "invoice_status", invoiceDoc.status || "Draft");
+  frappe.model.set_value(
+    doctype,
+    docname,
+    "invoice_status",
+    invoiceDoc.status || "Draft"
+  );
   if (Object.prototype.hasOwnProperty.call(invoiceDoc, "grand_total")) {
-    frappe.model.set_value(doctype, docname, "grand_total", invoiceDoc.grand_total || 0);
+    frappe.model.set_value(
+      doctype,
+      docname,
+      "grand_total",
+      invoiceDoc.grand_total || 0
+    );
   }
   const outstanding =
     invoiceDoc.outstanding_amount ??
@@ -1277,7 +1382,13 @@ async function sync_clearing_service_invoice_metrics(frm) {
       args: {
         doctype: "Sales Invoice",
         filters: { name: ["in", invoices] },
-        fields: ["name", "grand_total", "outstanding_amount", "status", "docstatus"],
+        fields: [
+          "name",
+          "grand_total",
+          "outstanding_amount",
+          "status",
+          "docstatus",
+        ],
         limit_page_length: invoices.length,
       },
     });
@@ -1314,7 +1425,12 @@ async function sync_clearing_service_invoice_metrics(frm) {
         return;
       }
 
-      frappe.model.set_value(doctype, docname, "reference_number", invoice.name);
+      frappe.model.set_value(
+        doctype,
+        docname,
+        "reference_number",
+        invoice.name
+      );
       frappe.model.set_value(
         doctype,
         docname,
