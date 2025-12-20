@@ -105,29 +105,49 @@ class TRAClearance(Document):
                     row.currency = self.currency
 
     def validate_duplicate_tra_clearance(self):
-        """Check if there are any submitted TRA Clearance documents linked to the same clearing file."""
-        if not self.clearing_file:
+        """Check if there are any submitted TRA Clearance documents linked to the same clearing file or T1 reference number."""
+        if not self.clearing_file and not self.custom_t1_ref__no:
             return
         
         # Skip validation if this document is already submitted
         if self.docstatus == 1:
             return
         
-        existing = frappe.db.exists(
-            "TRA Clearance",
-            {
-                "clearing_file": self.clearing_file,
-                "docstatus": 1,
-                "name": ["!=", self.name]
-            }
-        )
-        
-        if existing:
-            frappe.throw(
-                _("A submitted TRA Clearance document already exists for Clearing File {0}").format(
-                    frappe.bold(self.clearing_file)
-                )
+        # Check for duplicate clearing file
+        if self.clearing_file:
+            existing = frappe.db.exists(
+                "TRA Clearance",
+                {
+                    "clearing_file": self.clearing_file,
+                    "docstatus": 1,
+                    "name": ["!=", self.name]
+                }
             )
+            
+            if existing:
+                frappe.throw(
+                    _("A submitted TRA Clearance document already exists for Clearing File {0}").format(
+                        frappe.bold(self.clearing_file)
+                    )
+                )
+        
+        # Check for duplicate T1 reference number
+        if self.custom_t1_ref__no:
+            existing_t1 = frappe.db.exists(
+                "TRA Clearance",
+                {
+                    "custom_t1_ref__no": self.custom_t1_ref__no,
+                    "docstatus": 1,
+                    "name": ["!=", self.name]
+                }
+            )
+            
+            if existing_t1:
+                frappe.throw(
+                    _("A submitted TRA Clearance document already exists for T1 Reference Number {0}").format(
+                        frappe.bold(self.custom_t1_ref__no)
+                    )
+                )
 
 @frappe.whitelist()
 def make_journal_entries(
