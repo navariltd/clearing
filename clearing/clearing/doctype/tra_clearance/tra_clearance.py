@@ -17,6 +17,7 @@ from erpnext import get_company_currency
 class TRAClearance(Document):
     def before_save(self):
         """Before saving the document, check if invoice is paid and update the status."""
+        self.validate_duplicate_tra_clearance()
         self.set_currency()
         self._set_child_currencies()
         self.set_total_charges()
@@ -103,6 +104,30 @@ class TRAClearance(Document):
                 ):
                     row.currency = self.currency
 
+    def validate_duplicate_tra_clearance(self):
+        """Check if there are any submitted TRA Clearance documents linked to the same clearing file."""
+        if not self.clearing_file:
+            return
+        
+        # Skip validation if this document is already submitted
+        if self.docstatus == 1:
+            return
+        
+        existing = frappe.db.exists(
+            "TRA Clearance",
+            {
+                "clearing_file": self.clearing_file,
+                "docstatus": 1,
+                "name": ["!=", self.name]
+            }
+        )
+        
+        if existing:
+            frappe.throw(
+                _("A submitted TRA Clearance document already exists for Clearing File {0}").format(
+                    frappe.bold(self.clearing_file)
+                )
+            )
 
 @frappe.whitelist()
 def make_journal_entries(

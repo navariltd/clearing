@@ -108,10 +108,16 @@ def _set_numeric_if_changed(
 
 class ClearingCharges(Document):
     def before_save(self):
+        self.validate_duplicate_submitted_clearing_charges()
         self.validate_clearing_file_status()
         self.set_currency()
         self.fetch_total_charges()
         self.update_charges_table()
+    
+    def on_submit(self):
+        """Updates the status of the clearing file to 'Charges Pending'"""
+        if self.clearing_file:
+            frappe.db.set_value("Clearing File", self.clearing_file, "status", "Charges Pending")
 
     def validate_clearing_file_status(self):
         """Ensure the linked Clearing File has status 'Cleared' before saving."""
@@ -127,6 +133,34 @@ class ClearingCharges(Document):
                 _(
                     "Cannot save Clearing Charges. The Clearing File '{0}' must have status 'Cleared'. Current status is '{1}'"
                 ).format(self.clearing_file, clearing_file_status or "Unknown")
+            )
+    
+    def validate_duplicate_submitted_clearing_charges(self):
+        """Ensure no other submitted Clearing Charges exist for the same Clearing File."""
+        if not self.clearing_file:
+            return
+        
+        filters = {
+            "clearing_file": self.clearing_file,
+            "docstatus": 1,
+        }
+        
+        # Exclude current document if it's already saved
+        if self.name and not self.is_new():
+            filters["name"] = ["!=", self.name]
+        
+        existing = frappe.get_all(
+            "Clearing Charges",
+            filters=filters,
+            fields=["name"],
+            limit=1
+        )
+        
+        if existing:
+            frappe.throw(
+                _(
+                    "Cannot submit. Another Clearing Charges document '{0}' is already submitted for Clearing File '{1}'"
+                ).format(existing[0].name, self.clearing_file)
             )
 
     def set_currency(self):
