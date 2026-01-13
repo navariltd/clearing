@@ -29,6 +29,7 @@
   "paid_by",
   "section_break_thzk",
   "tra_charges",
+  "make_journal",
   "total_charges",
   "total_charges_section",
   "paid_by_clearing_agent",
@@ -277,12 +278,17 @@
    "hidden": 1,
    "label": "Has Any Attachments",
    "read_only": 1
+  },
+  {
+   "fieldname": "make_journal",
+   "fieldtype": "Button",
+   "label": "Make Journal"
   }
  ],
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-12-13 08:30:21.665975",
+ "modified": "2026-01-13 12:08:28.207577",
  "modified_by": "Administrator",
  "module": "Clearing",
  "name": "TRA Clearance",
