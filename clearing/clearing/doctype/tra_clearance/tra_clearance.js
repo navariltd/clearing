@@ -143,6 +143,15 @@ frappe.ui.form.on("TRA Clearance", {
     check_tra_documents_status(frm);
   },
 
+  async make_journal(frm) {
+    await frappe.require("/assets/clearing/js/stage_journal.js");
+    await clearing.stageJournal.handle(frm, {
+      tableField: "tra_charges",
+      serverMethod:
+        "clearing.clearing.doctype.tra_clearance.tra_clearance.make_journal_entries",
+    });
+  },
+
   attach_documents: function (frm) {
     if (frm.doc.__unsaved) {
       frappe.msgprint(
@@ -180,13 +189,11 @@ frappe.ui.form.on("TRA Clearance", {
                     // Populate table with attributes
                     r.message.clearing_document_attribute.forEach(
                       (aattribute) => {
-                        d.fields_dict.document_attributes.df.data.push(
-                          {
-                            attribute: aattribute.document_attribute,
-                            mandatory: aattribute.mandatory,
-                            value: "",
-                          }
-                        );
+                        d.fields_dict.document_attributes.df.data.push({
+                          attribute: aattribute.document_attribute,
+                          mandatory: aattribute.mandatory,
+                          value: "",
+                        });
                       }
                     );
                     attributes_table.refresh();

@@ -37,6 +37,7 @@
   "paid_by",
   "section_break_pqpp",
   "physical_charges",
+  "make_journal",
   "total_charges",
   "total_charges_section",
   "column_break_idnw",
@@ -340,12 +341,17 @@
    "fieldname": "has_any_doc_attachments",
    "fieldtype": "Check",
    "label": "Has Documents Attached"
+  },
+  {
+   "fieldname": "make_journal",
+   "fieldtype": "Button",
+   "label": "Make Journal"
   }
  ],
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-12-13 10:17:32.024979",
+ "modified": "2026-01-13 11:35:13.901921",
  "modified_by": "Administrator",
  "module": "Clearing",
  "name": "Physical Verification",

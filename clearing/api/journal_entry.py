@@ -11,9 +11,6 @@ from clearing.api.utils import (
     get_expense_account,
     get_cash_or_bank_account,
     get_clearing_receivable_account,
-    get_journal_entry_party_summary,
-    get_receivable_account,
-    infer_party_from_journal_entry,
 )
 
 
@@ -635,6 +632,7 @@ def create_child_table_journal_entries(
     defaults = get_disbursement_journal_entry_defaults(clearing_file)
     party_account = defaults.get("party_account")
     bank_account = defaults.get("bank_account")
+    cost_centre = frappe.db.get_single_value("Clearing Settings", "default_cost_centre")
     if not party_account or not bank_account:
         frappe.throw(
             _(
@@ -734,6 +732,7 @@ def create_child_table_journal_entries(
             "debit_in_account_currency": amount,
             "exchange_rate": party_exchange_rate,
             "user_remark": account_remark,
+            "cost_center": cost_centre if cost_centre else "Not Set",
         }
         if party_account_currency:
             debit_row["account_currency"] = party_account_currency
@@ -742,6 +741,7 @@ def create_child_table_journal_entries(
             "account": bank_account,
             "credit_in_account_currency": amount_in_bank_currency,
             "exchange_rate": bank_exchange_rate,
+            "cost_center": cost_centre if cost_centre else "Not Set",
         }
         if bank_account_currency:
             credit_row["account_currency"] = bank_account_currency
@@ -751,7 +751,7 @@ def create_child_table_journal_entries(
         je.set("accounts", [])
         je.append("accounts", debit_row)
         je.append("accounts", credit_row)
-        je.insert()
+        je.insert()        
         je.submit()
 
         if journal_field:
@@ -778,6 +778,41 @@ def create_child_table_journal_entries(
         doc.save(ignore_permissions=True)
 
     return created
+
+
+def verify_child_table_journal_entries():
+    """Verify that all account entries have cost_centre set to defualt from Clearing Settings."""
+    settings_cost_centre = frappe.db.get_single_value(
+        "Clearing Settings", "default_cost_centre"
+    )
+    if not settings_cost_centre:
+        return
+
+    affected = frappe.db.sql(
+        """
+        select je.name as journal_entry
+        from `tabJournal Entry` je
+        join `tabJournal Entry Account` jea on jea.parent = je.name
+        where je.clearing_file is not null
+          and (jea.cost_center is null or jea.cost_center != %(cost_centre)s)
+          and je.docstatus = 1
+        """,
+        {"cost_centre": settings_cost_centre},
+        as_dict=True,
+    )
+    for row in affected:
+        je = frappe.get_doc("Journal Entry", row.journal_entry)
+        updated = False
+        for acc in je.accounts:
+            if not acc.cost_center or acc.cost_center != settings_cost_centre:
+                acc.cost_center = settings_cost_centre
+                updated = True
+        if updated:
+            je.save()
+            frappe.msgprint(
+                _("Updated cost center on Journal Entry {0}").format(je.name),
+                alert=True,
+            )
 
 
 def _build_stage_disbursement_remarks(

@@ -7,6 +7,7 @@
   "journal_entry_settings_section",
   "column_break_1",
   "default_expense_account",
+  "default_cost_centre",
   "cash_or_bank_group_account",
   "clearing_receivable_account",
   "column_break_xzgy",
@@ -75,12 +76,19 @@
    "fieldname": "tra_clearance",
    "fieldtype": "Check",
    "label": "T1 Clearance"
+  },
+  {
+   "description": "Default for Physical Verification and T1 Clearance.",
+   "fieldname": "default_cost_centre",
+   "fieldtype": "Link",
+   "label": "Default Cost Centre",
+   "options": "Cost Center"
   }
  ],
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "links": [],
- "modified": "2025-12-16 13:43:10.682823",
+ "modified": "2026-01-13 12:00:18.380792",
  "modified_by": "Administrator",
  "module": "Clearing",
  "name": "Clearing Settings",
