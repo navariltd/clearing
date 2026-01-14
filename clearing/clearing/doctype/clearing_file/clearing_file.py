@@ -12,16 +12,12 @@ class ClearingFile(Document):
     def before_save(self):
         self.set_currency()
         self.update_container_summary()
-        # Check and possibly update status, but do not enforce it strictly
         self.check_and_update_status()
-        # Block saving if TANCIS details are filled before reaching Open
         self.validate_tancis_details_before_open()
-        # Check if declaration type is IM8 and update port clearance transit bond
         self.update_port_clearance_transit_bond()
-        # Prevent editing TANCIS details after they have been captured
         self.enforce_tancis_fields_immutable()
-        # Stamp the cleared date when status moves to Cleared
         self._ensure_cleared_date()
+        self.validate_unique_tansad_no()
 
     def before_submit(self):
         if self.status == "Delivered" and not self._has_clearing_charges():
@@ -74,6 +70,28 @@ class ClearingFile(Document):
             self.status = "Closed"
         except Exception:
             pass
+
+
+    def validate_unique_tansad_no(self):
+        """Ensure no other Clearing File has the same TANSAD number."""
+        if not self.tansad_no:
+            return
+        
+        filters = {"tansad_no": self.tansad_no, "docstatus": ["<", 2]}
+        
+        # Exclude current document if it's not new
+        if not self.is_new():
+            filters["name"] = ["!=", self.name]
+        
+        existing = frappe.db.exists("Clearing File", filters)
+        
+        if existing:
+            frappe.throw(
+                _("Another Clearing File with TANSAD No. {0} already exists: {1}").format(
+                    self.tansad_no, existing
+                ),
+                title=_("Duplicate TANSAD Number")
+            )
 
     def check_and_update_status(self):
         # First check for transit documents to set status to "Open"
