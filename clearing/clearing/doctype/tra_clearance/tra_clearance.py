@@ -23,6 +23,7 @@ class TRAClearance(Document):
         self.set_total_charges()
         self.set_paid_by_total()
         self.set_total_paid()
+        self.validate_unique_t1_reference()
 
         if self.invoice_paid:
             # If the invoice is paid, automatically set the status to 'Payment Completed'
@@ -148,6 +149,26 @@ class TRAClearance(Document):
                         frappe.bold(self.custom_t1_ref__no)
                     )
                 )
+    
+    def validate_unique_t1_reference(self):
+        """Ensure no other TRA Clearance document has the same T1 reference number."""
+        if not self.custom_t1_ref__no:
+            return
+        
+        filters = {
+            "custom_t1_ref__no": self.custom_t1_ref__no,
+            "name": ["!=", self.name]
+        }
+        
+        existing = frappe.db.exists("TRA Clearance", filters)
+        
+        if existing:
+            frappe.throw(
+                _("TRA Clearance document {0} already exists with T1 Reference Number {1}").format(
+                    frappe.bold(existing),
+                    frappe.bold(self.custom_t1_ref__no)
+                )
+            )
 
 @frappe.whitelist()
 def make_journal_entries(
