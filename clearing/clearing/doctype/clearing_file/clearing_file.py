@@ -11,6 +11,7 @@ from clearing.clearing.utils.required_docs import get_required_document_types_by
 class ClearingFile(Document):
     def before_save(self):
         self.set_currency()
+        self.calculate_total_weight_and_volume()
         self.update_container_summary()
         self.check_and_update_status()
         self.validate_tancis_details_before_open()
@@ -63,6 +64,18 @@ class ClearingFile(Document):
         if target_currency and current_currency != target_currency:
             self.currency = target_currency
 
+    def calculate_total_weight_and_volume(self):
+        """Calculate total weight and volume from cargo details."""
+        total_weight = 0.0
+        total_volume = 0.0
+
+        for cargo in self.get("cargo_details", []):
+            total_weight += frappe.utils.flt(cargo.get("weight") or 0)
+            total_volume += frappe.utils.flt(cargo.get("volume") or 0)
+
+        self.total_weight = total_weight
+        self.total_volume = total_volume
+
     def on_submit(self):
         # Upon submission, mark as Closed
         try:
@@ -71,26 +84,25 @@ class ClearingFile(Document):
         except Exception:
             pass
 
-
     def validate_unique_tansad_no(self):
         """Ensure no other Clearing File has the same TANSAD number."""
         if not self.tansad_no:
             return
-        
+
         filters = {"tansad_no": self.tansad_no, "docstatus": ["<", 2]}
-        
+
         # Exclude current document if it's not new
         if not self.is_new():
             filters["name"] = ["!=", self.name]
-        
+
         existing = frappe.db.exists("Clearing File", filters)
-        
+
         if existing:
             frappe.throw(
-                _("Another Clearing File with TANSAD No. {0} already exists: {1}").format(
-                    self.tansad_no, existing
-                ),
-                title=_("Duplicate TANSAD Number")
+                _(
+                    "Another Clearing File with TANSAD No. {0} already exists: {1}"
+                ).format(self.tansad_no, existing),
+                title=_("Duplicate TANSAD Number"),
             )
 
     def check_and_update_status(self):
