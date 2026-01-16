@@ -24,13 +24,6 @@ frappe.ui.form.on("Clearing Charges", {
   refresh(frm) {
     setup_disbursement_link_behaviour(frm);
 
-    // Only populate charges and calculate totals for new/unsaved documents
-    // to prevent marking saved documents as dirty
-    if (frm.is_new() || frm.doc.__unsaved) {
-      populate_clearance_charges(frm);
-      calculate_totals(frm);
-    }
-
     if (frm.doc.clearing_file) {
       // Only fetch and sync data for saved documents
       if (!frm.is_new() && !frm.doc.__unsaved) {
@@ -165,22 +158,21 @@ function populate_clearance_charges(frm, options = {}) {
       fetch_clearance_rows(frm, doctype, chargeType)
     )
   ).then((records) => {
+    const totalsByCharge = {};
+    records.flat().forEach(({ charge_type, amount }) => {
+      if (!charge_type) {
+        return;
+      }
+      const key = charge_type;
+      totalsByCharge[key] = (totalsByCharge[key] || 0) + flt(amount || 0);
+    });
 
-  const totalsByCharge = {};
-  records.flat().forEach(({ charge_type, amount }) => {
-    if (!charge_type) {
-      return;
-    }
-    const key = charge_type;
-    totalsByCharge[key] = (totalsByCharge[key] || 0) + flt(amount || 0);
-  });
+    Object.entries(totalsByCharge).forEach(([chargeType, total]) => {
+      add_or_update_clearance_row(frm, chargeType, total);
+    });
 
-  Object.entries(totalsByCharge).forEach(([chargeType, total]) => {
-    add_or_update_clearance_row(frm, chargeType, total);
-  });
-
-  frm.refresh_field("charges");
-  calculate_totals(frm);
+    frm.refresh_field("charges");
+    calculate_totals(frm);
   });
 }
 
@@ -259,6 +251,12 @@ frappe.ui.form.on("Clearing Charge Detail", {
 });
 
 function calculate_totals(frm) {
+  // Skip recalculation for saved, clean documents to prevent marking as dirty
+  // Python's fetch_total_charges() already handles this correctly in before_save
+  if (!frm.is_new() && !frm.is_dirty() && !frm.doc.__unsaved) {
+    return;
+  }
+
   let tra_total = 0;
   let port_total = 0;
   let shipment_total = 0;
@@ -1359,6 +1357,11 @@ function upsert_primary_clearing_service(frm, invoiceDoc) {
 }
 
 function sync_clearing_service_invoice_metrics(frm) {
+  // Skip for saved, clean documents to prevent marking as dirty
+  if (!frm.is_new() && !frm.is_dirty() && !frm.doc.__unsaved) {
+    return;
+  }
+
   const rows = frm.doc.clearing_services || [];
   if (!rows.length) {
     calculate_totals(frm);
