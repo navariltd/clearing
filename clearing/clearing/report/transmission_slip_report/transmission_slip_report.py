@@ -57,10 +57,16 @@ def get_columns():
             "width": 150,
         },
         {
-            "fieldname": "currency",
-            "label": _("Currency"),
-            "fieldtype": "Data",
-            "width": 150,
+            "fieldname": "total_weight",
+            "label": _("Total Weight (Kg)"),
+            "fieldtype": "Float",
+            "width": 120,
+        },
+        {
+            "fieldname": "total_volume",
+            "label": _("Total Volume (CBM)"),
+            "fieldtype": "Float",
+            "width": 130,
         },
         {
             "fieldname": "clearing_charges",
@@ -68,6 +74,12 @@ def get_columns():
             "fieldtype": "Link",
             "options": "Clearing Charges",
             "width": 200,
+        },
+        {
+            "fieldname": "currency",
+            "label": _("Currency"),
+            "fieldtype": "Data",
+            "width": 100,
         },
         {
             "fieldname": "total_debit",
@@ -97,6 +109,8 @@ def get_data(filters):
             cf.customer,
             cf.road_consignment,
             cf.cargo_description,
+            cf.total_weight,
+            cf.total_volume,
             cc.currency,
             cc.name as clearing_charges,
             cc.total_debit,

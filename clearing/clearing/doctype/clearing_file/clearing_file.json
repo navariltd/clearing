@@ -37,6 +37,10 @@
   "bond_release_date",
   "cargo_details_section",
   "cargo_details",
+  "section_break_ifck",
+  "total_weight",
+  "column_break_tpun",
+  "total_volume",
   "section_break_xl9ew",
   "cargo_description",
   "column_break_nqelm",
@@ -409,13 +413,31 @@
    "fieldname": "road_consignment",
    "fieldtype": "Data",
    "label": "Road Consignment"
+  },
+  {
+   "fieldname": "section_break_ifck",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "total_weight",
+   "fieldtype": "Float",
+   "label": "Total Weight"
+  },
+  {
+   "fieldname": "column_break_tpun",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "total_volume",
+   "fieldtype": "Float",
+   "label": "Total Volume (CBM)"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-12-19 14:35:03.591962",
+ "modified": "2026-01-16 09:43:50.522675",
  "modified_by": "Administrator",
  "module": "Clearing",
  "name": "Clearing File",
