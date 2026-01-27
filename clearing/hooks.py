@@ -4,6 +4,7 @@ app_publisher = "Nelson Mpanju"
 app_description = "Clearing and Forwarding"
 app_email = "nelsonnorbert87@gmail.com"
 app_license = "MIT"
+app_version = "16.0.0-dev"
 
 fixtures = [{"doctype": "Custom Field", "filters": [["module", "=", "Clearing"]]}]
 
