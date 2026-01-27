@@ -68,25 +68,6 @@ def get_columns():
             "fieldtype": "Float",
             "width": 130,
         },
-        # {
-        #     "fieldname": "clearing_charges",
-        #     "label": _("Clearing Charges"),
-        #     "fieldtype": "Link",
-        #     "options": "Clearing Charges",
-        #     "width": 200,
-        # },
-        # {
-        #     "fieldname": "currency",
-        #     "label": _("Currency"),
-        #     "fieldtype": "Data",
-        #     "width": 100,
-        # },
-        # {
-        #     "fieldname": "total_debit",
-        #     "label": _("Total Invoice Charges"),
-        #     "fieldtype": "Currency",
-        #     "width": 150,
-        # },
         {
             "fieldname": "custom_t1_ref__no",
             "label": _("T1 Ref No"),
