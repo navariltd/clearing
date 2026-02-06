@@ -27,7 +27,7 @@ def get_columns():
         },
         {
             "fieldname": "status",
-            "label": _("Status"),
+            "label": _("CF Status"),
             "fieldtype": "Data",
             "width": 100,
         },
@@ -80,6 +80,19 @@ def get_columns():
             "fieldtype": "Data",
             "width": 100,
         },
+        {
+            "fieldname": "physical_verification",
+            "label": _("Physical Verification"),
+            "fieldtype": "Link",
+            "options": "Physical Verification",
+            "width": 150,
+        },
+        {
+            "fieldname": "physical_verification_date",
+            "label": _("Physical Verification Date"),
+            "fieldtype": "Date",
+            "width": 150,
+        },
     ]
 
 
@@ -100,11 +113,15 @@ def get_data(filters):
             cf.cargo_description,
             cf.total_weight,
             cf.total_volume,
-            tc.custom_t1_ref__no
+            tc.custom_t1_ref__no,
+            pv.name AS physical_verification,
+            pv.posting_date AS physical_verification_date
         FROM 
             `tabClearing File` cf
         LEFT JOIN 
             `tabTRA Clearance` tc ON tc.clearing_file = cf.name
+        LEFT JOIN 
+            `tabPhysical Verification` pv ON pv.clearing_file = cf.name
         {where_clause}
         ORDER BY 
             cf.tancis_lodging_date DESC, cf.name DESC
