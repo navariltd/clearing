@@ -2,14 +2,58 @@ import frappe
 from clearing.api.utils import get_expense_account
 
 
+def get_item_price_from_price_list(item_code, price_list, currency=None):
+    """
+    Fetch item price from Item Price list.
+
+    Args:
+        item_code: Item code to fetch price for
+        price_list: Price list name
+        currency: Optional currency filter
+
+    Returns:
+        float: Item price or None if not found
+    """
+    if not price_list or not item_code:
+        return None
+
+    filters = {
+        "item_code": item_code,
+        "price_list": price_list,
+        "selling": 1,
+    }
+
+    # Add currency filter if provided
+    if currency:
+        filters["currency"] = currency
+
+    # Get the item price, ordered by valid_from date (most recent first)
+    item_prices = frappe.get_all(
+        "Item Price",
+        filters=filters,
+        fields=["price_list_rate"],
+        order_by="valid_from desc",
+        limit=1,
+    )
+
+    if item_prices and len(item_prices) > 0:
+        return item_prices[0].get("price_list_rate")
+
+    return None
+
+
 @frappe.whitelist()
-def get_items_from_selected_clearing_charges(clearing_charges, company):
+def get_items_from_selected_clearing_charges(
+    clearing_charges, company, price_list=None, currency=None
+):
     """
     Fetch items from a Clearing Charges document and format them for a Sales Invoice.
 
     Args:
         clearing_charges: Name of the Clearing Charges document
         company: Company name for account lookups
+        price_list: Price list to fetch item rates from
+        currency: Currency for price list filtering
 
     Returns:
         dict: Contains sales_invoice_items and clearing_details
@@ -34,12 +78,18 @@ def get_items_from_selected_clearing_charges(clearing_charges, company):
             )
 
             # Get item details - charge_type is linked to Item doctype
-            # Fetch standard_rate from Item table for the fixed rate
             item_name, uom, standard_rate = frappe.db.get_value(
                 "Item", charge.charge_type, ["item_name", "stock_uom", "standard_rate"]
             )
 
-            rate = standard_rate or 0
+            # Try to get rate from Item Price list first
+            rate = get_item_price_from_price_list(
+                charge.charge_type, price_list, currency
+            )
+
+            # Fall back to standard_rate if no price found in price list
+            if rate is None or rate == 0:
+                rate = standard_rate or 0
 
             # Create item dictionary for sales invoice
             item_details = {
