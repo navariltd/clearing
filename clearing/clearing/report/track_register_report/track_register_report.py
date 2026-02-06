@@ -13,6 +13,12 @@ def execute(filters=None):
 def get_columns():
     return [
         {
+            "fieldname": "arrival_date",
+            "label": _("Arrival Date (ETA)"),
+            "fieldtype": "Date",
+            "width": 150,    
+        },
+        {
             "fieldname": "name",
             "label": _("Clearing File"),
             "fieldtype": "Link",
@@ -84,6 +90,7 @@ def get_data(filters):
     data = frappe.db.sql(
         """
         SELECT 
+            cf.arrival_date,
             cf.name,
             cf.tancis_lodging_date,
             cf.tansad_no,
