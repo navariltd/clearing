@@ -56,6 +56,8 @@ frappe.ui.form.on("Sales Invoice", {
                     args: {
                       clearing_charges: clearing_charges,
                       company: frm.doc.company,
+                      price_list: frm.doc.selling_price_list || "",
+                      currency: frm.doc.currency || "",
                     },
                     callback: function (response) {
                       if (response && response.message) {
@@ -108,7 +110,7 @@ frappe.ui.form.on("Sales Invoice", {
                             if (frm.fields_dict.custom_clearing_charges) {
                               frm.set_value(
                                 "custom_clearing_charges",
-                                first_details.clearing_charges
+                                first_details.clearing_charges,
                               );
                             }
                           }
@@ -119,7 +121,7 @@ frappe.ui.form.on("Sales Invoice", {
                           frappe.show_alert({
                             message: __(
                               "Items fetched from {0} Clearing Charges document(s)",
-                              [selections.length]
+                              [selections.length],
                             ),
                             indicator: "green",
                           });
@@ -153,7 +155,7 @@ frappe.ui.form.on("Sales Invoice", {
             },
           });
         },
-        __("Get Items From")
+        __("Get Items From"),
       );
     }
   },
