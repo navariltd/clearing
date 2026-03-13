@@ -127,8 +127,16 @@ def create_new_journal_entry_for_single_clearance(doc):
         doc, "currency", None
     )
 
-    # Get default expense account from Clearing Settings
-    expense_account = frappe.db.get_single_value("Clearing Settings", "default_expense_account")
+    # Physical Verification can use a dedicated debit account from settings.
+    expense_field = "default_expense_account"
+    if getattr(doc, "doctype", None) == "Physical Verification":
+        expense_field = "default_physical_verification_je_ac"
+
+    expense_account = frappe.db.get_single_value("Clearing Settings", expense_field)
+    if not expense_account and expense_field != "default_expense_account":
+        expense_account = frappe.db.get_single_value(
+            "Clearing Settings", "default_expense_account"
+        )
 
     if not expense_account:
         frappe.throw(
@@ -611,6 +619,8 @@ def create_child_table_journal_entries(
     label_field: str = "item",
     journal_field: str = "journal_entry",
     disbursed_date_field: str = "disbursed_date",
+    debit_account: Optional[str] = None,
+    include_party_on_debit: bool = True,
 ) -> List[Dict[str, str]]:
     """Create Journal Entries for arbitrary child-table charge rows."""
     if not doc:
@@ -630,7 +640,7 @@ def create_child_table_journal_entries(
         frappe.throw(_("Please select at least one charge."))
 
     defaults = get_disbursement_journal_entry_defaults(clearing_file)
-    party_account = defaults.get("party_account")
+    party_account = debit_account or defaults.get("party_account")
     bank_account = defaults.get("bank_account")
     cost_centre = frappe.db.get_single_value("Clearing Settings", "default_cost_centre")
     if not party_account or not bank_account:
@@ -646,7 +656,11 @@ def create_child_table_journal_entries(
     voucher_type = defaults.get("voucher_type") or "Debit Note"
     party_type = defaults.get("party_type")
     party = defaults.get("party")
-    party_account_currency = defaults.get("party_account_currency")
+    party_account_currency = (
+        frappe.get_cached_value("Account", party_account, "account_currency")
+        if party_account
+        else defaults.get("party_account_currency")
+    )
     bank_account_currency = defaults.get("bank_account_currency")
     doc_currency = defaults.get("currency") or getattr(doc, "currency", None)
 
@@ -655,7 +669,8 @@ def create_child_table_journal_entries(
         frappe.throw(_("No charge rows were found on this document."))
 
     if (
-        doc_currency
+        not debit_account
+        and doc_currency
         and party_account_currency
         and party_account_currency != doc_currency
     ):
@@ -725,15 +740,27 @@ def create_child_table_journal_entries(
                     bank_account_currency, company_currency, posting_date
                 )
 
+        amount_in_debit_currency = amount
+        if (
+            doc_currency
+            and party_account_currency
+            and party_account_currency != doc_currency
+        ):
+            amount_in_debit_currency = flt(
+                amount
+                * get_exchange_rate(doc_currency, party_account_currency, posting_date)
+            )
+
         debit_row = {
             "account": party_account,
-            "party_type": party_type,
-            "party": party,
-            "debit_in_account_currency": amount,
+            "debit_in_account_currency": amount_in_debit_currency,
             "exchange_rate": party_exchange_rate,
             "user_remark": account_remark,
             "cost_center": cost_centre if cost_centre else "Not Set",
         }
+        if include_party_on_debit and party_type and party:
+            debit_row["party_type"] = party_type
+            debit_row["party"] = party
         if party_account_currency:
             debit_row["account_currency"] = party_account_currency
 
@@ -751,7 +778,7 @@ def create_child_table_journal_entries(
         je.set("accounts", [])
         je.append("accounts", debit_row)
         je.append("accounts", credit_row)
-        je.insert()        
+        je.insert()
         je.submit()
 
         if journal_field:

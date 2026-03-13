@@ -6,10 +6,13 @@
  "field_order": [
   "journal_entry_settings_section",
   "column_break_1",
-  "default_expense_account",
   "default_cost_centre",
   "cash_or_bank_group_account",
   "clearing_receivable_account",
+  "column_break_qixx",
+  "default_expense_account",
+  "default_physical_verification_je_ac",
+  "default_t1_clearance_je_expense_ac",
   "column_break_xzgy",
   "shipping_line_clearance",
   "port_clearance",
@@ -83,12 +86,30 @@
    "fieldtype": "Link",
    "label": "Default Cost Centre",
    "options": "Cost Center"
+  },
+  {
+   "fieldname": "column_break_qixx",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "default_physical_verification_je_ac",
+   "fieldtype": "Link",
+   "label": "Default Physical Verification Journal Entry Expense A/C",
+   "link_filters": "[[\"Account\",\"account_type\",\"=\",\"Expense Account\"]]",
+   "options": "Account"
+  },
+  {
+   "fieldname": "default_t1_clearance_je_expense_ac",
+   "fieldtype": "Link",
+   "label": "Default T1 Clearance Journal Entry Expense A/C",
+   "link_filters": "[[\"Account\",\"account_type\",\"=\",\"Expense Account\"]]",
+   "options": "Account"
   }
  ],
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "links": [],
- "modified": "2026-01-13 12:00:18.380792",
+ "modified": "2026-03-13 12:31:34.065091",
  "modified_by": "Administrator",
  "module": "Clearing",
  "name": "Clearing Settings",
