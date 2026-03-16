@@ -7,12 +7,15 @@ import frappe
 from frappe.model.document import Document
 from frappe import _
 from frappe.utils import flt
-from clearing.clearing.doctype.port_clearance.port_clearance import ensure_all_documents_attached
+from clearing.clearing.doctype.port_clearance.port_clearance import (
+    ensure_all_documents_attached,
+)
 from clearing.api.journal_entry import (
     create_child_table_journal_entries,
     normalize_child_row_selection,
 )
 from erpnext import get_company_currency
+
 
 class PhysicalVerification(Document):
     def validate(self):
@@ -25,6 +28,7 @@ class PhysicalVerification(Document):
                     "Create a TRA Clearance for this Clearing File before proceeding to Physical Verification."
                 )
             )
+
     def before_save(self):
         """Before saving the document, check if invoice is paid and update the status."""
         self.validate_duplicate_physical_verification()
@@ -56,14 +60,21 @@ class PhysicalVerification(Document):
         if self.verification_status != "Completed":
             frappe.throw(_("You can't submit unless verification is completed."))
 
-
     def validate_status(self):
         """Ensure both payment and verification statuses are completed before submission."""
         if self.status != "Payment Completed":
-            frappe.throw(_("You cannot complete Physical Verification unless the payment status is 'Payment Completed'."))
+            frappe.throw(
+                _(
+                    "You cannot complete Physical Verification unless the payment status is 'Payment Completed'."
+                )
+            )
 
         if self.verification_status != "Completed":
-            frappe.throw(_("You cannot complete Physical Verification unless the verification status is 'Completed'."))
+            frappe.throw(
+                _(
+                    "You cannot complete Physical Verification unless the verification status is 'Completed'."
+                )
+            )
 
     def set_total_charges(self):
         """Aggregate child table amounts into the parent total."""
@@ -88,7 +99,9 @@ class PhysicalVerification(Document):
         """
         # Sync from source if available
         if self.clearing_file:
-            cargo_loc = frappe.db.get_value("Clearing File", self.clearing_file, "cargo_location")
+            cargo_loc = frappe.db.get_value(
+                "Clearing File", self.clearing_file, "cargo_location"
+            )
             if cargo_loc is not None:
                 self.verification_location = cargo_loc
 
@@ -115,10 +128,14 @@ class PhysicalVerification(Document):
             return
         cf_status = frappe.db.get_value("Clearing File", self.clearing_file, "status")
         if cf_status == "Pre-Lodged":
-            frappe.db.set_value("Clearing File", self.clearing_file, "status", "On Process")
-        
+            frappe.db.set_value(
+                "Clearing File", self.clearing_file, "status", "On Process"
+            )
+
         if len(self.get("document", [])) > 0:
-            frappe.db.set_value("Physical Verification", self.name, "has_any_doc_attachments", 1)
+            frappe.db.set_value(
+                "Physical Verification", self.name, "has_any_doc_attachments", 1
+            )
 
     def set_currency(self):
         """Sync currency with Clearing File / company currency."""
@@ -143,18 +160,20 @@ class PhysicalVerification(Document):
 
         for table_field in ("physical_charges", "charge"):
             for row in self.get(table_field, []):
-                if hasattr(row, "currency") and row.currency != getattr(self, "currency", None):
+                if hasattr(row, "currency") and row.currency != getattr(
+                    self, "currency", None
+                ):
                     row.currency = self.currency
-    
+
     def validate_duplicate_physical_verification(self):
         """Check if there are any submitted Physical Verification documents linked to the same clearing file."""
         if not self.clearing_file:
             return
-        
+
         # Skip validation if this document is already submitted
         if self.docstatus == 1:
             return
-        
+
         existing = frappe.db.exists(
             "Physical Verification",
             {
@@ -184,6 +203,16 @@ def make_journal_entries(
     if not selected:
         frappe.throw(_("Please select at least one charge."))
 
+    debit_account = frappe.db.get_single_value(
+        "Clearing Settings", "default_physical_verification_je_ac"
+    )
+    if not debit_account:
+        frappe.throw(
+            _(
+                "Default Physical Verification Journal Entry Expense A/C is not set in Clearing Settings."
+            )
+        )
+
     return create_child_table_journal_entries(
         doc,
         table_field="physical_charges",
@@ -192,4 +221,6 @@ def make_journal_entries(
         label_field="item",
         journal_field="journal_entry",
         disbursed_date_field="disbursed_date",
+        debit_account=debit_account,
+        include_party_on_debit=False,
     )
