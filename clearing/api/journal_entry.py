@@ -127,10 +127,13 @@ def create_new_journal_entry_for_single_clearance(doc):
         doc, "currency", None
     )
 
-    # Physical Verification can use a dedicated debit account from settings.
+    # Some doctypes can use dedicated debit accounts from settings.
     expense_field = "default_expense_account"
-    if getattr(doc, "doctype", None) == "Physical Verification":
+    doctype_name = getattr(doc, "doctype", None)
+    if doctype_name == "Physical Verification":
         expense_field = "default_physical_verification_je_ac"
+    elif doctype_name == "TRA Clearance":
+        expense_field = "default_t1_clearance_je_expense_ac"
 
     expense_account = frappe.db.get_single_value("Clearing Settings", expense_field)
     if not expense_account and expense_field != "default_expense_account":
