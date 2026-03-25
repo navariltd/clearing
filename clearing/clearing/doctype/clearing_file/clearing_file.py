@@ -84,6 +84,44 @@ class ClearingFile(Document):
         except Exception:
             pass
 
+    def after_save(self):
+        """Create a draft Clearing Charges document when Clearing File is cleared."""
+        if self.status == "Cleared" and self.docstatus == 0:
+            self._create_clearing_charges_if_needed()
+
+    def _create_clearing_charges_if_needed(self):
+        """Create a draft Clearing Charges document if one doesn't exist."""
+        if not self.name:
+            return
+
+        existing = frappe.db.exists(
+            "Clearing Charges",
+            {"clearing_file": self.name, "docstatus": ["<", 2]},
+        )
+
+        if existing:
+            return
+
+        try:
+            clearing_charges = frappe.new_doc("Clearing Charges")
+            clearing_charges.clearing_file = self.name
+            clearing_charges.insert(ignore_permissions=True)
+
+            frappe.msgprint(
+                _("Clearing Charges document <a href='/app/clearing-charges/{0}'>{0}</a> created automatically in draft status").format(clearing_charges.name),
+                indicator="blue",
+            )
+        except frappe.ValidationError as e:
+            frappe.log_error(
+                f"Failed to auto-create Clearing Charges for {self.name}: {str(e)}",
+                "Clearing File Auto-creation",
+            )
+        except Exception as e:
+            frappe.log_error(
+                f"Unexpected error auto-creating Clearing Charges for {self.name}: {str(e)}",
+                "Clearing File Auto-creation",
+            )
+
     def validate_unique_tansad_no(self):
         """Ensure no other Clearing File has the same TANSAD number."""
         if not self.tansad_no:
