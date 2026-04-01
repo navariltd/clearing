@@ -42,6 +42,63 @@ def get_item_price_from_price_list(item_code, price_list, currency=None):
     return None
 
 
+def _normalize_docname_list(raw_value):
+    """Normalize RPC payloads to a clean list of document names."""
+    values = []
+
+    if raw_value is None:
+        return values
+
+    if isinstance(raw_value, (list, tuple, set)):
+        values = list(raw_value)
+    elif isinstance(raw_value, str):
+        payload = raw_value.strip()
+        if not payload:
+            return values
+
+        parsed = None
+        try:
+            parsed = frappe.parse_json(payload)
+        except Exception:
+            parsed = None
+
+        if isinstance(parsed, (list, tuple, set)):
+            values = list(parsed)
+        elif isinstance(parsed, str):
+            values = [parsed]
+        else:
+            values = [part.strip() for part in payload.split(",") if part.strip()]
+    else:
+        values = [raw_value]
+
+    cleaned = []
+    seen = set()
+
+    for value in values:
+        name = str(value or "").strip()
+        if not name:
+            continue
+
+        # Handle common malformed string payload: ["DOC-0001"]
+        if name.startswith("[") and name.endswith("]"):
+            inner = name[1:-1].strip()
+            if inner:
+                name = inner
+
+        if (name.startswith('"') and name.endswith('"')) or (
+            name.startswith("'") and name.endswith("'")
+        ):
+            name = name[1:-1].strip()
+
+        if not name or name in seen:
+            continue
+
+        seen.add(name)
+        cleaned.append(name)
+
+    return cleaned
+
+
 @frappe.whitelist()
 def get_items_from_selected_clearing_charges(
     clearing_charges, company, price_list=None, currency=None
@@ -388,4 +445,148 @@ def handle_payment_entry_cancel_for_clearing_files(payment_entry, method=None):
             cf_name,
             "Payment Pending",
             f"Payment Entry {payment_entry.name} (Cancelled)",
+        )
+
+
+@frappe.whitelist()
+def get_items_from_selected_clearing_files(
+    clearing_files, company, price_list=None, currency=None
+):
+    """
+    Fetch service charges from selected Clearing File documents and format them for Sales Invoice.
+    
+    Filters Clearing Files by status: 'Cleared', 'Delivered', or 'Charges Pending'.
+
+    Args:
+        clearing_files: Single Clearing File name or list of names (comma-separated string or list)
+        company: Company name for account lookups
+        price_list: Price list to fetch item rates from
+        currency: Currency for price list filtering
+
+    Returns:
+        dict: Contains sales_invoice_items and clearing_details
+    """
+    sales_invoice_items = []
+    default_income_account = frappe.db.get_value(
+        "Company", company, "default_income_account"
+    )
+
+    # Normalize clearing_files to a clean list of names (handles JSON array strings)
+    file_list = _normalize_docname_list(clearing_files)
+
+    allowed_statuses = {"Cleared", "Delivered", "Charges Pending"}
+
+    try:
+        clearing_details_list = []
+
+        for clearing_file_name in file_list:
+            frappe.logger().info(
+                "get_items_from_selected_clearing_files: processing clearing_file=%s",
+                clearing_file_name,
+            )
+            try:
+                # Fetch clearing file with status validation
+                clearing_file_doc = frappe.get_doc("Clearing File", clearing_file_name)
+            except frappe.exceptions.DoesNotExistError:
+                frappe.msgprint(
+                    f"Skipping Clearing File {clearing_file_name}: Document not found in database",
+                    title="File Not Found",
+                    indicator="warning",
+                )
+                continue
+            except Exception as e:
+                frappe.msgprint(
+                    f"Skipping Clearing File {clearing_file_name}: {str(e)}",
+                    title="Error Loading File",
+                    indicator="warning",
+                )
+                continue
+
+            # Verify status is in allowed list
+            if clearing_file_doc.status not in allowed_statuses:
+                print(
+                    "get_items_from_selected_clearing_files: skipping clearing_file=%s status=%s",
+                    clearing_file_name,
+                    clearing_file_doc.status,
+                )
+                frappe.msgprint(
+                    f"Skipping Clearing File {clearing_file_name}: Status '{clearing_file_doc.status}' not in allowed statuses (Cleared, Delivered, Charges Pending)",
+                    title="Status Not Allowed",
+                    indicator="warning",
+                )
+                continue
+
+            # Iterate over service charges in the Clearing File document
+            for charge in clearing_file_doc.get("service_charges", []):
+                # Get the item details
+                charge_type = charge.get("charge_type")
+                if not charge_type:
+                    continue
+
+                # Get the expense account
+                expense_account = get_expense_account(
+                    "Clearing File", company, currency=clearing_file_doc.currency
+                )
+
+                # Get item details - charge_type is linked to Item doctype
+                item_name, uom, standard_rate = frappe.db.get_value(
+                    "Item", charge_type, ["item_name", "stock_uom", "standard_rate"]
+                ) or (None, None, 0)
+
+                # Try to get rate from Item Price list first
+                rate = get_item_price_from_price_list(
+                    charge_type, price_list, currency
+                )
+
+                # Fall back to the amount set in service_charges, then standard_rate
+                if rate is None or rate == 0:
+                    rate = charge.get("amount") or standard_rate or 0
+
+                # Create item dictionary for sales invoice
+                item_details = {
+                    "item_code": charge_type,
+                    "item_name": item_name or charge_type,
+                    "qty": 1,
+                    "rate": rate,
+                    "amount": rate,
+                    "uom": uom or "Nos",
+                    "income_account": default_income_account,
+                    "expense_account": expense_account,
+                    "custom_clearing_file": clearing_file_name,
+                    "custom_truck_number": "",
+                }
+
+                sales_invoice_items.append(item_details)
+
+            # Prepare clearing file details
+            clearing_details = {
+                "clearing_file": clearing_file_name,
+                "customer": clearing_file_doc.customer,
+                "currency": clearing_file_doc.currency,
+                "status": clearing_file_doc.status,
+            }
+            clearing_details_list.append(clearing_details)
+
+        if not sales_invoice_items:
+            frappe.msgprint(
+                "No service charges found in the selected Clearing Files.",
+                title="No Items",
+                indicator="blue",
+            )
+
+        # Prepare response with first clearing file details
+        response_data = {
+            "sales_invoice_items": sales_invoice_items,
+            "clearing_details": clearing_details_list[0] if clearing_details_list else {},
+        }
+
+        frappe.response["message"] = response_data
+
+    except Exception as e:
+        frappe.log_error(
+            f"Unexpected error in get_items_from_selected_clearing_files: {str(e)}",
+            "Clearing File Item Fetch Error",
+        )
+        frappe.throw(
+            f"An unexpected error occurred while fetching items from Clearing Files. Please try again or contact your administrator."
         )
