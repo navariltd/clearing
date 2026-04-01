@@ -3,14 +3,23 @@ import frappe
 from frappe.model.document import Document
 from frappe.contacts.doctype.address.address import get_address_display
 from frappe import _
-from frappe.utils import cstr, nowdate
+from frappe.utils import cstr, flt, nowdate
 from erpnext import get_company_currency
 from clearing.clearing.utils.required_docs import get_required_document_types_by_mode
+from clearing.clearing.controllers.sales_invoice import get_item_price_from_price_list
+
+
+DEFAULT_SERVICE_CHARGE_ITEMS = (
+    "Administrative Operation Cost",
+    "Clearing Agency Fee",
+)
+DEFAULT_FALLBACK_PRICE_LIST = "Standard Selling"
 
 
 class ClearingFile(Document):
     def before_save(self):
         self.set_currency()
+        self.ensure_default_service_charges()
         self.calculate_total_weight_and_volume()
         self.update_container_summary()
         self.check_and_update_status()
@@ -63,6 +72,31 @@ class ClearingFile(Document):
         current_currency = getattr(self, "currency", None)
         if target_currency and current_currency != target_currency:
             self.currency = target_currency
+
+    def ensure_default_service_charges(self):
+        """Ensure default invoice-type service charge rows exist with priced rates."""
+        existing_types = {
+            cstr(getattr(row, "charge_type", "")).strip()
+            for row in (self.get("service_charges") or [])
+            if cstr(getattr(row, "charge_type", "")).strip()
+        }
+
+        defaults = get_default_service_charge_rows(
+            customer=self.customer,
+            currency=self.currency,
+        )
+
+        for row_data in defaults:
+            charge_type = cstr(row_data.get("charge_type") or "").strip()
+            if not charge_type or charge_type in existing_types:
+                continue
+
+            row = self.append("service_charges", {})
+            row.charge_type = charge_type
+            row.amount = flt(row_data.get("amount") or 0)
+            if self.meta.get_field("service_charges"):
+                row.is_invoice = 1
+            existing_types.add(charge_type)
 
     def calculate_total_weight_and_volume(self):
         """Calculate total weight and volume from cargo details."""
@@ -772,3 +806,54 @@ def check_container_interchange_completion(clearing_file: str) -> dict:
     refund_done = any(record.get("refund") for record in records)
 
     return {"final_done": bool(final_done), "refund_done": bool(refund_done)}
+
+
+def _get_customer_selling_price_list(customer: str) -> str:
+    if not customer:
+        return ""
+
+    customer_meta = frappe.get_meta("Customer")
+    price_list_field = None
+    for candidate in ("default_price_list", "selling_price_list"):
+        if customer_meta.has_field(candidate):
+            price_list_field = candidate
+            break
+
+    if not price_list_field:
+        return ""
+
+    return cstr(frappe.db.get_value("Customer", customer, price_list_field) or "").strip()
+
+
+def _get_price_from_lists(item_code: str, price_lists, currency=None) -> float:
+    for price_list in price_lists:
+        if not price_list:
+            continue
+        rate = get_item_price_from_price_list(item_code, price_list, currency)
+        if rate is not None:
+            return flt(rate)
+    return 0.0
+
+
+@frappe.whitelist()
+def get_default_service_charge_rows(customer=None, currency=None):
+    """Return default service charge rows priced from customer list then Standard Selling."""
+    customer_price_list = _get_customer_selling_price_list(customer)
+
+    candidate_price_lists = []
+    if customer_price_list:
+        candidate_price_lists.append(customer_price_list)
+    if DEFAULT_FALLBACK_PRICE_LIST not in candidate_price_lists:
+        candidate_price_lists.append(DEFAULT_FALLBACK_PRICE_LIST)
+
+    rows = []
+    for charge_type in DEFAULT_SERVICE_CHARGE_ITEMS:
+        amount = _get_price_from_lists(charge_type, candidate_price_lists, currency)
+        rows.append(
+            {
+                "charge_type": charge_type,
+                "amount": flt(amount or 0),
+            }
+        )
+
+    return rows

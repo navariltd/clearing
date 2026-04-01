@@ -19,6 +19,10 @@ const HEADLINE_PRIORITY = {
 };
 
 const CLEARANCE_TYPES = ["TRA Clearance", "Shipping Line Clearance"];
+const DEFAULT_SERVICE_CHARGE_TYPES = [
+  "Administrative Operation Cost",
+  "Clearing Agency Fee",
+];
 
 frappe.ui.form.on("Clearing File", {
   refresh: function (frm) {
@@ -28,7 +32,7 @@ frappe.ui.form.on("Clearing File", {
     check_clearing_documents_status(frm);
 
     frm.__tancis_original = Object.fromEntries(
-      TANCIS_FIELDS.map((field) => [field, frm.doc[field] || null])
+      TANCIS_FIELDS.map((field) => [field, frm.doc[field] || null]),
     );
     frm.__tancis_warning_shown = false;
 
@@ -41,6 +45,7 @@ frappe.ui.form.on("Clearing File", {
     frm.trigger("update_cargo_description");
     frm.trigger("update_total_container_summary");
     frm.trigger("bind_cargo_input_handlers");
+    frm.trigger("ensure_default_service_charges");
 
     // Force refresh of submit button
     if (frm.doc.status === "Delivered") {
@@ -62,7 +67,7 @@ frappe.ui.form.on("Clearing File", {
           <strong>Transit Bond Alert:</strong><br>
           Transit Bond has not yet been returned for this IM8 TRANSIT AND TRANSHIPMENT declaration.
         </div>`,
-        "yellow"
+        "yellow",
       );
     }
 
@@ -99,7 +104,7 @@ frappe.ui.form.on("Clearing File", {
     }
     // Update the "Attach Documents" button to be primary
     const container = document.querySelector(
-      '[data-fieldname="attach_documents"]'
+      '[data-fieldname="attach_documents"]',
     );
     if (container) {
       const button = container.querySelector("button");
@@ -113,7 +118,7 @@ frappe.ui.form.on("Clearing File", {
       label,
       filters,
       new_doc_data,
-      success_message
+      success_message,
     ) {
       frm.add_custom_button(
         __(label),
@@ -147,8 +152,8 @@ frappe.ui.form.on("Clearing File", {
                   frappe.msgprint(
                     __(
                       success_message +
-                        " Please fill in the required fields and save."
-                    )
+                        " Please fill in the required fields and save.",
+                    ),
                   );
                 }
               },
@@ -198,8 +203,8 @@ frappe.ui.form.on("Clearing File", {
                   frappe.msgprint(
                     __(
                       "Please create {0} for this Clearing File before proceeding.",
-                      [requiredClearancePrompt]
-                    )
+                      [requiredClearancePrompt],
+                    ),
                   );
                 },
                 error: () => proceed(), // fallback to let server-side validation handle
@@ -212,7 +217,7 @@ frappe.ui.form.on("Clearing File", {
           }
         },
         null,
-        "primary"
+        "primary",
       ); // Make the button primary
     }
 
@@ -228,7 +233,7 @@ frappe.ui.form.on("Clearing File", {
           customer: frm.doc.customer,
           status: "Payment Pending",
         },
-        "T1 Clearance created successfully"
+        "T1 Clearance created successfully",
       );
 
       // Shipping Line Clearance (show regardless, server will enforce order)
@@ -243,7 +248,7 @@ frappe.ui.form.on("Clearing File", {
             customer: frm.doc.customer,
             status: "Unpaid",
           },
-          "Shipping Line Clearance created successfully"
+          "Shipping Line Clearance created successfully",
         );
       }
 
@@ -258,7 +263,7 @@ frappe.ui.form.on("Clearing File", {
           customer: frm.doc.customer,
           status: "Payment Pending",
         },
-        "Physical Verification created successfully"
+        "Physical Verification created successfully",
       );
 
       // Port Clearance
@@ -279,7 +284,7 @@ frappe.ui.form.on("Clearing File", {
         "Port Clearance",
         { clearing_file: frm.doc.name },
         port_clearance_data,
-        "Port Clearance created successfully"
+        "Port Clearance created successfully",
       );
     }
 
@@ -330,7 +335,7 @@ frappe.ui.form.on("Clearing File", {
       () => {
         frm.__tancis_warning_shown = false;
       },
-      true
+      true,
     );
   },
 
@@ -345,7 +350,7 @@ frappe.ui.form.on("Clearing File", {
         })
         .catch((err) => {
           frappe.msgprint(
-            __("Error saving the Clearing File. Please try again.")
+            __("Error saving the Clearing File. Please try again."),
           );
           console.error("Error saving Clearing File:", err);
         });
@@ -374,6 +379,63 @@ frappe.ui.form.on("Clearing File", {
       frm.set_value("address_display", "");
       frm.set_value("customer_address", "");
     }
+
+    frm.trigger("ensure_default_service_charges");
+  },
+
+  ensure_default_service_charges: function (frm) {
+    const existingChargeTypes = new Set(
+      (frm.doc.service_charges || [])
+        .map((row) => (row.charge_type || "").trim())
+        .filter(Boolean),
+    );
+
+    const missing = DEFAULT_SERVICE_CHARGE_TYPES.filter(
+      (chargeType) => !existingChargeTypes.has(chargeType),
+    );
+    if (!missing.length) {
+      return;
+    }
+
+    frappe.call({
+      method:
+        "clearing.clearing.doctype.clearing_file.clearing_file.get_default_service_charge_rows",
+      args: {
+        customer: frm.doc.customer || null,
+        currency: frm.doc.currency || null,
+      },
+      callback: function (r) {
+        const rows = r.message || [];
+        if (!rows.length) {
+          return;
+        }
+
+        const latestExisting = new Set(
+          (frm.doc.service_charges || [])
+            .map((row) => (row.charge_type || "").trim())
+            .filter(Boolean),
+        );
+
+        let changed = false;
+        rows.forEach((entry) => {
+          const chargeType = (entry.charge_type || "").trim();
+          if (!chargeType || latestExisting.has(chargeType)) {
+            return;
+          }
+
+          const row = frm.add_child("service_charges");
+          row.charge_type = chargeType;
+          row.amount = flt(entry.amount || 0);
+          row.is_invoice = 1;
+          latestExisting.add(chargeType);
+          changed = true;
+        });
+
+        if (changed) {
+          frm.refresh_field("service_charges");
+        }
+      },
+    });
   },
 
   update_cargo_description: function (frm) {
@@ -401,7 +463,7 @@ frappe.ui.form.on("Clearing File", {
       wrapper.on(
         "change.cargo-count input.cargo-count",
         `[data-fieldname="${fieldname}"]`,
-        handler
+        handler,
       );
     });
   },
@@ -425,7 +487,7 @@ frappe.ui.form.on("Clearing File", {
           row.doctype,
           row.name,
           "quantity_of_container",
-          containerCount
+          containerCount,
         );
       }
 
@@ -441,7 +503,7 @@ frappe.ui.form.on("Clearing File", {
           row.doctype,
           row.name,
           "quantity_of_hs_code",
-          hsCount
+          hsCount,
         );
       }
     });
@@ -494,12 +556,12 @@ frappe.ui.form.on("Cargo", {
     var container_number_df = frappe.meta.get_docfield(
       "Cargo",
       "container_number",
-      frm.doc.name
+      frm.doc.name,
     );
     var seal_number_df = frappe.meta.get_docfield(
       "Cargo",
       "seal_number",
-      frm.doc.name
+      frm.doc.name,
     );
 
     if (row.package_type === "Loose") {
@@ -514,11 +576,11 @@ frappe.ui.form.on("Cargo", {
 
     frm.fields_dict.cargo_details.grid.toggle_display(
       "container_number",
-      !container_number_df.hidden
+      !container_number_df.hidden,
     );
     frm.fields_dict.cargo_details.grid.toggle_display(
       "seal_number",
-      !seal_number_df.hidden
+      !seal_number_df.hidden,
     );
     frm.fields_dict.cargo_details.grid.refresh();
     frm.trigger("update_total_container_summary");
@@ -557,7 +619,7 @@ function proceedWithAttachmentDialog(frm) {
               callback: function (r) {
                 if (r.message && r.message.clearing_document_attribute) {
                   let attributes_table = d.get_field(
-                    "document_attributes"
+                    "document_attributes",
                   ).grid;
                   attributes_table.df.data = []; // Clear existing data
                   attributes_table.refresh();
@@ -570,20 +632,20 @@ function proceedWithAttachmentDialog(frm) {
                         mandatory: aattribute.mandatory,
                         value: "",
                       });
-                    }
+                    },
                   );
                   attributes_table.refresh();
                 } else {
                   frappe.msgprint(
-                    __("No attributes found for the selected document type.")
+                    __("No attributes found for the selected document type."),
                   );
                 }
               },
               error: function () {
                 frappe.msgprint(
                   __(
-                    "Failed to retrieve document attributes. Please try again."
-                  )
+                    "Failed to retrieve document attributes. Please try again.",
+                  ),
                 );
               },
             });
@@ -650,7 +712,7 @@ function proceedWithAttachmentDialog(frm) {
           document_attribute: attr.attribute,
           document_attribute_value: attr.value,
           mandatory: attr.mandatory,
-        })
+        }),
       );
 
       // Get the attachment URL
@@ -681,15 +743,15 @@ function proceedWithAttachmentDialog(frm) {
             console.error("Failed to create Clearing Document.");
             frappe.msgprint(
               __(
-                "There was an issue creating the Clearing Document. Please try again."
-              )
+                "There was an issue creating the Clearing Document. Please try again.",
+              ),
             );
           }
         },
         error: function (err) {
           console.error("Error during document creation:", err);
           frappe.msgprint(
-            __("Failed to create Clearing Document. Please try again.")
+            __("Failed to create Clearing Document. Please try again."),
           );
         },
       });
@@ -715,7 +777,7 @@ frappe.ui.form.on("Clearing File", {
       frappe.msgprint({
         title: __("Transit Bond Notice"),
         message: __(
-          "IM8 TRANSIT AND TRANSHIPMENT declaration type selected. Transit Bond will be automatically checked in related Port Clearance documents."
+          "IM8 TRANSIT AND TRANSHIPMENT declaration type selected. Transit Bond will be automatically checked in related Port Clearance documents.",
         ),
         indicator: "blue",
       });
@@ -793,7 +855,7 @@ function check_clearing_documents_status(frm) {
         .filter(Boolean);
 
       const missingDocs = requiredDocs.filter(
-        (doc) => !attachedDocs.includes(doc)
+        (doc) => !attachedDocs.includes(doc),
       );
 
       if (missingDocs.length) {
@@ -802,9 +864,9 @@ function check_clearing_documents_status(frm) {
           "docs",
           __(
             "Attach the following clearing documents to move this Clearing File to 'Open': {0}",
-            [missingDocs.join(", ")]
+            [missingDocs.join(", ")],
           ),
-          "yellow"
+          "yellow",
         );
         frm.__all_docs_alert_shown = false;
       } else {
@@ -815,12 +877,12 @@ function check_clearing_documents_status(frm) {
               message: __("All required clearing documents are attached."),
               indicator: "green",
             },
-            5
+            5,
           );
           frm.__all_docs_alert_shown = true;
         }
       }
-    }
+    },
   );
 }
 
