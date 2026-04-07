@@ -1,5 +1,11 @@
 frappe.ui.form.on("Sales Invoice", {
   refresh: function (frm) {
+    const allowed_clearing_statuses = [
+      "Cleared",
+      "Delivered",
+      "Charges Pending",
+    ];
+
     // Custom button to fetch items from Clearing Charges
     if (frm.doc.docstatus === 0) {
       // Custom button to fetch service charges from Clearing Files
@@ -12,14 +18,13 @@ frappe.ui.form.on("Sales Invoice", {
             target: frm,
             setters: {
               customer: frm.doc.customer || "",
-              status: ["in", ["Cleared", "Delivered", "Charges Pending"]],
             },
             add_filters_group: 1,
             date_field: "modified",
             get_query() {
               let filters = {
                 docstatus: ["<", 2], // Draft or submitted
-                status: ["in", ["Cleared", "Delivered", "Charges Pending"]],
+                status: ["in", allowed_clearing_statuses],
               };
 
               // Add customer filter if set in the invoice
