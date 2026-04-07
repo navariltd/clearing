@@ -13,18 +13,38 @@ frappe.ui.form.on("Sales Invoice", {
         __("Clearing Files"),
         function () {
           // Open a dialog to select Clearing Files using MultiSelectDialog
-          new frappe.ui.form.MultiSelectDialog({
+          let clearing_file_dialog;
+
+          clearing_file_dialog = new frappe.ui.form.MultiSelectDialog({
             doctype: "Clearing File",
             target: frm,
-            setters: {
-              customer: frm.doc.customer || "",
-            },
+            setters: [
+              {
+                fieldtype: "Link",
+                fieldname: "customer",
+                label: __("Consignee/ Customer"),
+                options: "Customer",
+                default: frm.doc.customer || "",
+              },
+              {
+                fieldtype: "Select",
+                fieldname: "status",
+                label: __("Status"),
+                options: ["", ...allowed_clearing_statuses].join("\n"),
+              },
+            ],
             add_filters_group: 1,
             date_field: "modified",
             get_query() {
+              const selected_status =
+                clearing_file_dialog?.dialog?.get_value("status");
               let filters = {
                 docstatus: ["<", 2], // Draft or submitted
-                status: ["in", allowed_clearing_statuses],
+                status:
+                  selected_status &&
+                  allowed_clearing_statuses.includes(selected_status)
+                    ? selected_status
+                    : ["in", allowed_clearing_statuses],
               };
 
               // Add customer filter if set in the invoice
