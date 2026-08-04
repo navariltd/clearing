@@ -1,6 +1,7 @@
 {
+ "app": "clearing",
  "charts": [],
- "content": "[{\"id\":\"qjkf8U9csa\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\">Clearing &amp; Forwarding</span>\",\"col\":12}},{\"id\":\"ZIJAIUkM_7\",\"type\":\"card\",\"data\":{\"card_name\":\"Configuration Documents\",\"col\":4}},{\"id\":\"WSCYUVEegx\",\"type\":\"card\",\"data\":{\"card_name\":\"Main Documents\",\"col\":4}},{\"id\":\"y4vEvvBHtQ\",\"type\":\"card\",\"data\":{\"card_name\":\"Clearance Documents\",\"col\":4}},{\"id\":\"k_XCQEVnSd\",\"type\":\"card\",\"data\":{\"card_name\":\"Finance\",\"col\":4}},{\"id\":\"8FdVImHb7B\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Undelivered Files\",\"col\":3}},{\"id\":\"WA_L7zE3tD\",\"type\":\"card\",\"data\":{\"card_name\":\"Addresses & Contacts\",\"col\":4}},{\"id\":\"f12P4ALb2E\",\"type\":\"card\",\"data\":{\"card_name\":\"Documents Storage\",\"col\":4}}]",
+ "content": "[{\"id\":\"qjkf8U9csa\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\">Clearing &amp; Forwarding</span>\",\"col\":12}},{\"id\":\"ZIJAIUkM_7\",\"type\":\"card\",\"data\":{\"card_name\":\"Configuration Documents\",\"col\":4}},{\"id\":\"WSCYUVEegx\",\"type\":\"card\",\"data\":{\"card_name\":\"Main Documents\",\"col\":4}},{\"id\":\"y4vEvvBHtQ\",\"type\":\"card\",\"data\":{\"card_name\":\"Clearance Documents\",\"col\":4}},{\"id\":\"k_XCQEVnSd\",\"type\":\"card\",\"data\":{\"card_name\":\"Finance\",\"col\":4}},{\"id\":\"8FdVImHb7B\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Clearing Files\",\"col\":3}},{\"id\":\"WA_L7zE3tD\",\"type\":\"card\",\"data\":{\"card_name\":\"Addresses & Contacts\",\"col\":4}},{\"id\":\"f12P4ALb2E\",\"type\":\"card\",\"data\":{\"card_name\":\"Documents Storage\",\"col\":4}},{\"id\":\"gEG1U8kVGb\",\"type\":\"card\",\"data\":{\"card_name\":\"BORDEREAU DE TRANSMISSION\",\"col\":4}},{\"id\":\"MWiFlvieu_\",\"type\":\"card\",\"data\":{\"card_name\":\"Petty Cash Request\",\"col\":4}}]",
  "creation": "2024-07-16 16:13:53.401495",
  "custom_blocks": [],
  "docstatus": 0,
@@ -12,25 +13,6 @@
  "is_hidden": 0,
  "label": "Clearing & Forwarding",
  "links": [
-  {
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "Finance",
-   "link_count": 1,
-   "link_type": "DocType",
-   "onboard": 0,
-   "type": "Card Break"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "Clearing Charges",
-   "link_count": 0,
-   "link_to": "Clearing Charges",
-   "link_type": "DocType",
-   "onboard": 0,
-   "type": "Link"
-  },
   {
    "hidden": 0,
    "is_query_report": 0,
@@ -235,9 +217,96 @@
    "link_type": "DocType",
    "onboard": 0,
    "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Finance",
+   "link_count": 3,
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Card Break"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Clearing Charges",
+   "link_count": 0,
+   "link_to": "Clearing Charges",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Sales Invoice",
+   "link_count": 0,
+   "link_to": "Sales Invoice",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Journal Entry",
+   "link_count": 0,
+   "link_to": "Journal Entry",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Petty Cash Request",
+   "link_count": 1,
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Card Break"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Expense Claim",
+   "link_count": 0,
+   "link_to": "Expense Claim",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "BORDEREAU DE TRANSMISSION",
+   "link_count": 2,
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Card Break"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 1,
+   "label": "Transmission Slip Report",
+   "link_count": 0,
+   "link_to": "Transmission Slip Report",
+   "link_type": "Report",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 1,
+   "label": "Track Register Report",
+   "link_count": 0,
+   "link_to": "Track Register Report",
+   "link_type": "Report",
+   "onboard": 0,
+   "type": "Link"
   }
  ],
- "modified": "2025-04-09 17:51:16.061608",
+ "modified": "2026-08-04 07:16:59.623474",
  "modified_by": "Administrator",
  "module": "Clearing",
  "name": "Clearing & Forwarding",
@@ -252,11 +321,12 @@
   {
    "color": "Grey",
    "doc_view": "List",
-   "label": "Undelivered Files",
+   "label": "Clearing Files",
    "link_to": "Clearing File",
-   "stats_filter": "[[\"Clearing File\",\"status\",\"!=\",\"Delivered\",false]]",
+   "stats_filter": "[]",
    "type": "DocType"
   }
  ],
- "title": "Clearing & Forwarding"
+ "title": "Clearing & Forwarding",
+ "type": "Workspace"
 }
